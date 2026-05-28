@@ -32,24 +32,27 @@ ssd_border_create(struct ssd *ssd)
 		subtree->tree = lab_wlr_scene_tree_create(ssd->border.tree);
 		struct wlr_scene_tree *parent = subtree->tree;
 		wlr_scene_node_set_enabled(&parent->node, active);
-		float *color = theme->window[active].border_color;
+		float *color_left = theme->window[active].border_color_left;
+		float *color_right = theme->window[active].border_color_right;
+		float *color_top = theme->window[active].border_color_top;
+		float *color_bottom = theme->window[active].border_color_bottom;
 
 		subtree->left = lab_wlr_scene_rect_create(parent,
-			theme->border_width, height, color);
+			theme->border_width, height, color_left);
 		wlr_scene_node_set_position(&subtree->left->node, 0, 0);
 
 		subtree->right = lab_wlr_scene_rect_create(parent,
-			theme->border_width, height, color);
+			theme->border_width, height, color_right);
 		wlr_scene_node_set_position(&subtree->right->node,
 			theme->border_width + width, 0);
 
 		subtree->bottom = lab_wlr_scene_rect_create(parent,
-			full_width, theme->border_width, color);
+			full_width, theme->border_width, color_bottom);
 		wlr_scene_node_set_position(&subtree->bottom->node,
 			0, height);
 
 		subtree->top = lab_wlr_scene_rect_create(parent,
-			MAX(width - 2 * corner_width, 0), theme->border_width, color);
+			MAX(width - 2 * corner_width, 0), theme->border_width, color_top);
 		wlr_scene_node_set_position(&subtree->top->node,
 			theme->border_width + corner_width,
 			-(ssd->titlebar.height + theme->border_width));

@@ -538,6 +538,16 @@ theme_builtin(struct theme *theme)
 	parse_hexstr("#aaaaaa", theme->window[SSD_ACTIVE].border_color);
 	parse_hexstr("#aaaaaa", theme->window[SSD_INACTIVE].border_color);
 
+	/* Per-edge border colors: FLT_MIN means "not set, use border_color" */
+	theme->window[SSD_ACTIVE].border_color_top[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].border_color_right[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].border_color_bottom[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].border_color_left[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].border_color_top[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].border_color_right[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].border_color_bottom[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].border_color_left[0] = FLT_MIN;
+
 	parse_hexstr("#ff0000", theme->window_toggled_keybinds_color);
 
 	theme->window[SSD_ACTIVE].title_bg.gradient = LAB_GRADIENT_NONE;
@@ -720,6 +730,32 @@ entry(struct theme *theme, const char *key, const char *value)
 	if (match_glob(key, "border.color")) {
 		parse_color(value, theme->window[SSD_ACTIVE].border_color);
 		parse_color(value, theme->window[SSD_INACTIVE].border_color);
+	}
+
+	/* Per-edge border colors (CDE/Motif highlight/shadow frames) */
+	if (match_glob(key, "window.active.border.color.top")) {
+		parse_color(value, theme->window[SSD_ACTIVE].border_color_top);
+	}
+	if (match_glob(key, "window.active.border.color.right")) {
+		parse_color(value, theme->window[SSD_ACTIVE].border_color_right);
+	}
+	if (match_glob(key, "window.active.border.color.bottom")) {
+		parse_color(value, theme->window[SSD_ACTIVE].border_color_bottom);
+	}
+	if (match_glob(key, "window.active.border.color.left")) {
+		parse_color(value, theme->window[SSD_ACTIVE].border_color_left);
+	}
+	if (match_glob(key, "window.inactive.border.color.top")) {
+		parse_color(value, theme->window[SSD_INACTIVE].border_color_top);
+	}
+	if (match_glob(key, "window.inactive.border.color.right")) {
+		parse_color(value, theme->window[SSD_INACTIVE].border_color_right);
+	}
+	if (match_glob(key, "window.inactive.border.color.bottom")) {
+		parse_color(value, theme->window[SSD_INACTIVE].border_color_bottom);
+	}
+	if (match_glob(key, "window.inactive.border.color.left")) {
+		parse_color(value, theme->window[SSD_INACTIVE].border_color_left);
 	}
 
 	if (match_glob(key, "window.active.indicator.toggled-keybind.color")) {
@@ -1722,6 +1758,30 @@ post_processing(struct theme *theme)
 			"Adjusting menu.width.max: .max (%d) lower than .min (%d)",
 			theme->menu_max_width, theme->menu_min_width);
 		theme->menu_max_width = theme->menu_min_width;
+	}
+
+	/* Per-edge border color fallback: use border_color when not set */
+	for (int i = 0; i < 2; i++) {
+		if (theme->window[i].border_color_top[0] == FLT_MIN) {
+			memcpy(theme->window[i].border_color_top,
+				theme->window[i].border_color,
+				sizeof(theme->window[i].border_color_top));
+		}
+		if (theme->window[i].border_color_right[0] == FLT_MIN) {
+			memcpy(theme->window[i].border_color_right,
+				theme->window[i].border_color,
+				sizeof(theme->window[i].border_color_right));
+		}
+		if (theme->window[i].border_color_bottom[0] == FLT_MIN) {
+			memcpy(theme->window[i].border_color_bottom,
+				theme->window[i].border_color,
+				sizeof(theme->window[i].border_color_bottom));
+		}
+		if (theme->window[i].border_color_left[0] == FLT_MIN) {
+			memcpy(theme->window[i].border_color_left,
+				theme->window[i].border_color,
+				sizeof(theme->window[i].border_color_left));
+		}
 	}
 
 	if (theme->menu_border_width == INT_MIN) {

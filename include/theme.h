@@ -94,6 +94,16 @@ struct theme {
 		float button_colors[LAB_NODE_BUTTON_LAST + 1][4];
 
 		float border_color[4];
+
+		/*
+		 * Per-edge border colors for CDE/Motif-style raised frames.
+		 * When unset (FLT_MIN sentinel), fall back to border_color.
+		 */
+		float border_color_top[4];
+		float border_color_right[4];
+		float border_color_bottom[4];
+		float border_color_left[4];
+
 		float toggled_keybinds_color[4];
 		float label_text_color[4];
 
