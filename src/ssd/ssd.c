@@ -52,7 +52,7 @@ ssd_thickness(struct view *view)
 	struct border thickness = {
 		.top = theme->titlebar_height + theme->border_width,
 		.right = theme->border_width,
-		.bottom = theme->border_width,
+		.bottom = theme->border_width + theme->handle_height,
 		.left = theme->border_width,
 	};
 
@@ -167,6 +167,7 @@ ssd_create(struct view *view, bool active)
 	 */
 	ssd_titlebar_create(ssd);
 	ssd_border_create(ssd);
+	ssd_handle_create(ssd);
 	if (!view_titlebar_visible(view)) {
 		/* Ensure we keep the old state on Reconfigure or when exiting fullscreen */
 		ssd_set_titlebar(ssd, false);
@@ -242,6 +243,7 @@ ssd_update_geometry(struct ssd *ssd)
 	if (update_area || state_changed) {
 		ssd_titlebar_update(ssd);
 		ssd_border_update(ssd);
+		ssd_handle_update(ssd);
 		ssd_shadow_update(ssd);
 	}
 
@@ -259,6 +261,7 @@ ssd_set_titlebar(struct ssd *ssd, bool enabled)
 	wlr_scene_node_set_enabled(&ssd->titlebar.tree->node, enabled);
 	ssd->titlebar.height = enabled ? rc.theme->titlebar_height : 0;
 	ssd_border_update(ssd);
+	ssd_handle_update(ssd);
 	ssd_extents_update(ssd);
 	ssd_shadow_update(ssd);
 	ssd->margin = ssd_thickness(ssd->view);
@@ -281,6 +284,7 @@ ssd_destroy(struct ssd *ssd)
 	/* Destroy subcomponents */
 	ssd_titlebar_destroy(ssd);
 	ssd_border_destroy(ssd);
+	ssd_handle_destroy(ssd);
 	ssd_extents_destroy(ssd);
 	ssd_shadow_destroy(ssd);
 	wlr_scene_node_destroy(&ssd->tree->node);
@@ -319,6 +323,11 @@ ssd_set_active(struct ssd *ssd, bool active)
 		wlr_scene_node_set_enabled(
 			&ssd->titlebar.subtrees[active_state].tree->node,
 			active == active_state);
+		if (ssd->handle.subtrees[active_state].tree) {
+			wlr_scene_node_set_enabled(
+				&ssd->handle.subtrees[active_state].tree->node,
+				active == active_state);
+		}
 		if (ssd->shadow.subtrees[active_state].tree) {
 			wlr_scene_node_set_enabled(
 				&ssd->shadow.subtrees[active_state].tree->node,
@@ -335,6 +344,7 @@ ssd_enable_shade(struct ssd *ssd, bool enable)
 	}
 	ssd_titlebar_update(ssd);
 	ssd_border_update(ssd);
+	ssd_handle_update(ssd);
 	wlr_scene_node_set_enabled(&ssd->extents.tree->node, !enable);
 	ssd_shadow_update(ssd);
 }
@@ -384,6 +394,9 @@ ssd_debug_get_node_name(const struct ssd *ssd, struct wlr_scene_node *node)
 	}
 	if (node == &ssd->extents.tree->node) {
 		return "extents";
+	}
+	if (ssd->handle.tree && node == &ssd->handle.tree->node) {
+		return "handle";
 	}
 	return NULL;
 }

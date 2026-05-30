@@ -83,6 +83,36 @@ struct theme {
 	int window_button_hover_bg_corner_radius;
 
 	/*
+	 * Button bevel (P5): raised/sunken backgrounds for CDE/Motif buttons.
+	 * When all colors are 0 (zero), the existing invisible hitbox is used.
+	 * Pressed state swaps highlight/shadow for a sunken effect.
+	 */
+	float button_bg_color[4];
+	float button_bg_highlight_color[4];
+	float button_bg_shadow_color[4];
+	float button_pressed_bg_color[4];
+	float button_pressed_bg_highlight_color[4];
+	float button_pressed_bg_shadow_color[4];
+
+	/*
+	 * Separator groove (P6): a thin horizontal line between the titlebar
+	 * and the client area. Adjacent highlight (top) and shadow (bottom)
+	 * lines create the groove effect. When width is 0, no groove drawn.
+	 */
+	int separator_groove_width;
+	float separator_groove_highlight_color[4];
+	float separator_groove_shadow_color[4];
+
+	/*
+	 * Bottom handle (P4): a horizontal strip at the bottom of the frame
+	 * with beveled edges, distinct from the border above it. When height
+	 * is 0, no handle is drawn.
+	 */
+	int handle_height;
+	float handle_bevel_highlight_color[4];
+	float handle_bevel_shadow_color[4];
+
+	/*
 	 * Themes/textures for each active/inactive window. Indexed by
 	 * ssd_active_state.
 	 */
@@ -103,6 +133,34 @@ struct theme {
 		float border_color_right[4];
 		float border_color_bottom[4];
 		float border_color_left[4];
+
+		/*
+		 * Titlebar bevel lines for CDE/Motif-style relief.
+		 * A highlight line at the top edge and a shadow line at the
+		 * bottom edge of the titlebar create the classic raised-bar
+		 * appearance. When width is 0, no bevel lines are drawn.
+		 */
+		float titlebar_bevel_highlight_color[4];
+		float titlebar_bevel_shadow_color[4];
+		int titlebar_bevel_width;
+
+		/*
+		 * Multi-band border for CDE/Motif-style frame objects.
+		 * When frame_outer_width is 0 or unset, falls back to the
+		 * existing single-band border with per-edge colors (P1).
+		 * Total border width = frame_outer_width + frame_inner_width.
+		 */
+		int frame_outer_width;
+		float frame_outer_color_top[4];
+		float frame_outer_color_right[4];
+		float frame_outer_color_bottom[4];
+		float frame_outer_color_left[4];
+
+		int frame_inner_width;
+		float frame_inner_color_top[4];
+		float frame_inner_color_right[4];
+		float frame_inner_color_bottom[4];
+		float frame_inner_color_left[4];
 
 		float toggled_keybinds_color[4];
 		float label_text_color[4];

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <assert.h>
+#include <float.h>
 #include <wlr/types/wlr_scene.h>
 #include "config/rcxml.h"
 #include "common/list.h"
@@ -30,14 +31,19 @@ attach_ssd_button(struct wl_list *button_parts, enum lab_node_type type,
 	node_descriptor_create(&root->node, type, view, button);
 	wl_list_append(button_parts, &button->link);
 
-	/* Hitbox */
-	float invisible[4] = { 0, 0, 0, 0 };
-	lab_wlr_scene_rect_create(root, rc.theme->window_button_width,
-		rc.theme->window_button_height, invisible);
-
-	/* Icons */
+	/* Hitbox / Button bevel background (P5) */
 	int button_width = rc.theme->window_button_width;
 	int button_height = rc.theme->window_button_height;
+	float *bg = rc.theme->button_bg_color;
+	bool has_bevel = bg[0] != FLT_MIN && bg[3] > 0.0f;
+	if (has_bevel) {
+		lab_wlr_scene_rect_create(root, button_width, button_height, bg);
+	} else {
+		float invisible[4] = { 0, 0, 0, 0 };
+		lab_wlr_scene_rect_create(root, button_width, button_height, invisible);
+	}
+
+	/* Icons */
 	/*
 	 * Ensure a small amount of horizontal padding within the button
 	 * area (2px on each side with the default 26px button width).
@@ -65,7 +71,8 @@ attach_ssd_button(struct wl_list *button_parts, enum lab_node_type type,
 			}
 			struct scaled_img_buffer *img_buffer = scaled_img_buffer_create(
 				root, imgs[state_set], rc.theme->window_button_width,
-				rc.theme->window_button_height);
+				rc.theme->window_button_height,
+				LAB_SCALE_FILTER_NEAREST);
 			assert(img_buffer);
 			struct wlr_scene_node *icon_node = &img_buffer->scene_buffer->node;
 			wlr_scene_node_set_enabled(icon_node, false);

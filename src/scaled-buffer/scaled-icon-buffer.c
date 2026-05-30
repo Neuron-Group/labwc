@@ -46,7 +46,8 @@ choose_best_icon_buffer(struct scaled_icon_buffer *self, int icon_size, double s
 static struct lab_data_buffer *
 img_to_buffer(struct lab_img *img, int width, int height, double scale)
 {
-	struct lab_data_buffer *buffer = lab_img_render(img, width, height, scale);
+	struct lab_data_buffer *buffer = lab_img_render(img, width, height, scale,
+		LAB_SCALE_FILTER_BILINEAR);
 	lab_img_destroy(img);
 	return buffer;
 }
@@ -68,7 +69,8 @@ load_client_icon(struct scaled_icon_buffer *self, int icon_size, double scale)
 	struct lab_data_buffer *buffer = choose_best_icon_buffer(self, icon_size, scale);
 	if (buffer) {
 		wlr_log(WLR_DEBUG, "loaded icon from client buffer");
-		return buffer_resize(buffer, self->width, self->height, scale);
+		return buffer_resize(buffer, self->width, self->height, scale,
+			LAB_SCALE_FILTER_BILINEAR);
 	}
 
 	return NULL;

@@ -112,7 +112,8 @@ lab_img_add_modifier(struct lab_img *img,  lab_img_modifier_func_t modifier)
 }
 
 struct lab_data_buffer *
-lab_img_render(struct lab_img *img, int width, int height, double scale)
+lab_img_render(struct lab_img *img, int width, int height, double scale,
+		enum lab_scale_filter filter)
 {
 	struct lab_data_buffer *buffer = NULL;
 
@@ -121,7 +122,8 @@ lab_img_render(struct lab_img *img, int width, int height, double scale)
 	case LAB_IMG_PNG:
 	case LAB_IMG_XBM:
 	case LAB_IMG_XPM:
-		buffer = buffer_resize(img->data->buffer, width, height, scale);
+		buffer = buffer_resize(img->data->buffer, width, height, scale,
+			filter);
 		break;
 #if HAVE_RSVG
 	case LAB_IMG_SVG:

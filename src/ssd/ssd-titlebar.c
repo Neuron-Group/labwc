@@ -64,6 +64,46 @@ ssd_titlebar_create(struct ssd *ssd)
 		}
 		wlr_scene_node_set_position(&subtree->bar->node, corner_width, 0);
 
+		/* Titlebar bevel lines (CDE/Motif relief) */
+		int bevel_w = theme->window[active].titlebar_bevel_width;
+		int bar_width = MAX(width - 2 * corner_width, 0);
+		if (bevel_w > 0) {
+			float *hl = theme->window[active].titlebar_bevel_highlight_color;
+			float *sh = theme->window[active].titlebar_bevel_shadow_color;
+			subtree->bevel_highlight = lab_wlr_scene_rect_create(
+				parent, bar_width, bevel_w, hl);
+			wlr_scene_node_set_position(
+				&subtree->bevel_highlight->node, corner_width, 0);
+			subtree->bevel_shadow = lab_wlr_scene_rect_create(
+				parent, bar_width, bevel_w, sh);
+			wlr_scene_node_set_position(
+				&subtree->bevel_shadow->node, corner_width,
+				theme->titlebar_height - bevel_w);
+		} else {
+			subtree->bevel_highlight = NULL;
+			subtree->bevel_shadow = NULL;
+		}
+
+		/* Separator groove (P6): thin line between titlebar and client */
+		int groove_w = theme->separator_groove_width;
+		if (groove_w > 0) {
+			float *groove_hl = theme->separator_groove_highlight_color;
+			float *groove_sh = theme->separator_groove_shadow_color;
+			subtree->groove_highlight = lab_wlr_scene_rect_create(
+				parent, bar_width, groove_w, groove_hl);
+			wlr_scene_node_set_position(
+				&subtree->groove_highlight->node, corner_width,
+				theme->titlebar_height);
+			subtree->groove_shadow = lab_wlr_scene_rect_create(
+				parent, bar_width, groove_w, groove_sh);
+			wlr_scene_node_set_position(
+				&subtree->groove_shadow->node, corner_width,
+				theme->titlebar_height + groove_w);
+		} else {
+			subtree->groove_highlight = NULL;
+			subtree->groove_shadow = NULL;
+		}
+
 		subtree->corner_left = lab_wlr_scene_buffer_create(parent, corner_top_left);
 		wlr_scene_node_set_position(&subtree->corner_left->node,
 			-rc.theme->border_width, -rc.theme->border_width);
@@ -171,6 +211,37 @@ set_squared_corners(struct ssd *ssd, bool enable)
 		wlr_scene_node_set_position(&subtree->bar->node, x, 0);
 		wlr_scene_buffer_set_dest_size(subtree->bar,
 			MAX(width - 2 * x, 0), theme->titlebar_height);
+
+		/* Update bevel line positions and sizes */
+		int bevel_w = theme->window[active].titlebar_bevel_width;
+		if (bevel_w > 0 && subtree->bevel_highlight) {
+			int bar_w = MAX(width - 2 * x, 0);
+			wlr_scene_rect_set_size(subtree->bevel_highlight,
+				bar_w, bevel_w);
+			wlr_scene_node_set_position(
+				&subtree->bevel_highlight->node, x, 0);
+			wlr_scene_rect_set_size(subtree->bevel_shadow,
+				bar_w, bevel_w);
+			wlr_scene_node_set_position(
+				&subtree->bevel_shadow->node, x,
+				theme->titlebar_height - bevel_w);
+		}
+
+		/* Update groove positions and sizes */
+		int groove_w = theme->separator_groove_width;
+		if (groove_w > 0 && subtree->groove_highlight) {
+			int bar_w = MAX(width - 2 * x, 0);
+			wlr_scene_rect_set_size(subtree->groove_highlight,
+				bar_w, groove_w);
+			wlr_scene_node_set_position(
+				&subtree->groove_highlight->node, x,
+				theme->titlebar_height);
+			wlr_scene_rect_set_size(subtree->groove_shadow,
+				bar_w, groove_w);
+			wlr_scene_node_set_position(
+				&subtree->groove_shadow->node, x,
+				theme->titlebar_height + groove_w);
+		}
 
 		wlr_scene_node_set_enabled(&subtree->corner_left->node, !enable);
 
@@ -315,6 +386,37 @@ ssd_titlebar_update(struct ssd *ssd)
 		struct ssd_titlebar_subtree *subtree = &ssd->titlebar.subtrees[active];
 		wlr_scene_buffer_set_dest_size(subtree->bar,
 			MAX(width - bg_offset * 2, 0), theme->titlebar_height);
+
+		/* Update bevel line sizes on width change */
+		int bevel_w = theme->window[active].titlebar_bevel_width;
+		if (bevel_w > 0 && subtree->bevel_highlight) {
+			int bar_w = MAX(width - bg_offset * 2, 0);
+			wlr_scene_rect_set_size(subtree->bevel_highlight,
+				bar_w, bevel_w);
+			wlr_scene_node_set_position(
+				&subtree->bevel_highlight->node, bg_offset, 0);
+			wlr_scene_rect_set_size(subtree->bevel_shadow,
+				bar_w, bevel_w);
+			wlr_scene_node_set_position(
+				&subtree->bevel_shadow->node, bg_offset,
+				theme->titlebar_height - bevel_w);
+		}
+
+		/* Update groove sizes on width change */
+		int groove_w = theme->separator_groove_width;
+		if (groove_w > 0 && subtree->groove_highlight) {
+			int bar_w = MAX(width - bg_offset * 2, 0);
+			wlr_scene_rect_set_size(subtree->groove_highlight,
+				bar_w, groove_w);
+			wlr_scene_node_set_position(
+				&subtree->groove_highlight->node, bg_offset,
+				theme->titlebar_height);
+			wlr_scene_rect_set_size(subtree->groove_shadow,
+				bar_w, groove_w);
+			wlr_scene_node_set_position(
+				&subtree->groove_shadow->node, bg_offset,
+				theme->titlebar_height + groove_w);
+		}
 
 		x = theme->window_titlebar_padding_width;
 		struct ssd_button *button;

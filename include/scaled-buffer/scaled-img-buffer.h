@@ -2,6 +2,8 @@
 #ifndef LABWC_SCALED_IMG_BUFFER_H
 #define LABWC_SCALED_IMG_BUFFER_H
 
+#include "buffer.h"
+
 struct wlr_scene_tree;
 struct wlr_scene_node;
 struct wlr_scene_buffer;
@@ -13,6 +15,7 @@ struct scaled_img_buffer {
 	struct lab_img *img;
 	int width;
 	int height;
+	enum lab_scale_filter filter;
 };
 
 /*
@@ -60,8 +63,13 @@ struct scaled_img_buffer {
  *
  * This function clones the lab_img passed as the image source, so callers are
  * free to destroy it.
+ *
+ * The filter parameter controls how raster images are scaled:
+ *   LAB_SCALE_FILTER_BILINEAR - smooth (for SVG, photos)
+ *   LAB_SCALE_FILTER_NEAREST  - pixel-perfect (for XBM, pixel-art icons)
  */
 struct scaled_img_buffer *scaled_img_buffer_create(struct wlr_scene_tree *parent,
-	struct lab_img *img, int width, int height);
+	struct lab_img *img, int width, int height,
+	enum lab_scale_filter filter);
 
 #endif /* LABWC_SCALED_IMG_BUFFER_H */

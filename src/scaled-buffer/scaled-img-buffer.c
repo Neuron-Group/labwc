@@ -12,7 +12,7 @@ _create_buffer(struct scaled_buffer *scaled_buffer, double scale)
 {
 	struct scaled_img_buffer *self = scaled_buffer->data;
 	struct lab_data_buffer *buffer = lab_img_render(self->img,
-		self->width, self->height, scale);
+		self->width, self->height, scale, self->filter);
 	return buffer;
 }
 
@@ -44,7 +44,7 @@ static struct scaled_buffer_impl impl = {
 
 struct scaled_img_buffer *
 scaled_img_buffer_create(struct wlr_scene_tree *parent, struct lab_img *img,
-	int width, int height)
+	int width, int height, enum lab_scale_filter filter)
 {
 	assert(parent);
 	assert(img);
@@ -58,6 +58,7 @@ scaled_img_buffer_create(struct wlr_scene_tree *parent, struct lab_img *img,
 	self->img = lab_img_copy(img);
 	self->width = width;
 	self->height = height;
+	self->filter = filter;
 
 	scaled_buffer->data = self;
 

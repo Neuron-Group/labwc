@@ -178,7 +178,7 @@ buffer_create_from_wlr_buffer(struct wlr_buffer *wlr_buffer)
 
 struct lab_data_buffer *
 buffer_resize(struct lab_data_buffer *src_buffer, int width, int height,
-		double scale)
+		double scale, enum lab_scale_filter filter)
 {
 	assert(src_buffer);
 	cairo_surface_t *surface = src_buffer->surface;
@@ -200,7 +200,16 @@ buffer_resize(struct lab_data_buffer *src_buffer, int width, int height,
 	cairo_translate(cairo, dst_box.x, dst_box.y);
 	cairo_scale(cairo, scene_scale, scene_scale);
 	cairo_set_source_surface(cairo, surface, 0, 0);
-	cairo_pattern_set_filter(cairo_get_source(cairo), CAIRO_FILTER_GOOD);
+
+	if (filter == LAB_SCALE_FILTER_NEAREST) {
+		cairo_pattern_set_filter(cairo_get_source(cairo),
+			CAIRO_FILTER_NEAREST);
+		cairo_set_antialias(cairo, CAIRO_ANTIALIAS_NONE);
+	} else {
+		cairo_pattern_set_filter(cairo_get_source(cairo),
+			CAIRO_FILTER_GOOD);
+	}
+
 	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
 	cairo_paint(cairo);
 

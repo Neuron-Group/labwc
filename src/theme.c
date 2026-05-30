@@ -548,6 +548,54 @@ theme_builtin(struct theme *theme)
 	theme->window[SSD_INACTIVE].border_color_bottom[0] = FLT_MIN;
 	theme->window[SSD_INACTIVE].border_color_left[0] = FLT_MIN;
 
+	/* Titlebar bevel lines: 0 width means no bevel drawn */
+	theme->window[SSD_ACTIVE].titlebar_bevel_highlight_color[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].titlebar_bevel_shadow_color[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].titlebar_bevel_width = 0;
+	theme->window[SSD_INACTIVE].titlebar_bevel_highlight_color[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].titlebar_bevel_shadow_color[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].titlebar_bevel_width = 0;
+
+	/* Multi-band border: 0 width means single-band (P1) is used */
+	theme->window[SSD_ACTIVE].frame_outer_width = 0;
+	theme->window[SSD_ACTIVE].frame_outer_color_top[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_outer_color_right[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_outer_color_bottom[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_outer_color_left[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_inner_width = 0;
+	theme->window[SSD_ACTIVE].frame_inner_color_top[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_inner_color_right[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_inner_color_bottom[0] = FLT_MIN;
+	theme->window[SSD_ACTIVE].frame_inner_color_left[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_outer_width = 0;
+	theme->window[SSD_INACTIVE].frame_outer_color_top[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_outer_color_right[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_outer_color_bottom[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_outer_color_left[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_inner_width = 0;
+	theme->window[SSD_INACTIVE].frame_inner_color_top[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_inner_color_right[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_inner_color_bottom[0] = FLT_MIN;
+	theme->window[SSD_INACTIVE].frame_inner_color_left[0] = FLT_MIN;
+
+	/* Button bevel (P5): FLT_MIN means no bevel background drawn */
+	theme->button_bg_color[0] = FLT_MIN;
+	theme->button_bg_highlight_color[0] = FLT_MIN;
+	theme->button_bg_shadow_color[0] = FLT_MIN;
+	theme->button_pressed_bg_color[0] = FLT_MIN;
+	theme->button_pressed_bg_highlight_color[0] = FLT_MIN;
+	theme->button_pressed_bg_shadow_color[0] = FLT_MIN;
+
+	/* Separator groove (P6): 0 width means no groove drawn */
+	theme->separator_groove_width = 0;
+	theme->separator_groove_highlight_color[0] = FLT_MIN;
+	theme->separator_groove_shadow_color[0] = FLT_MIN;
+
+	/* Bottom handle (P4): 0 height means no handle drawn */
+	theme->handle_height = 0;
+	theme->handle_bevel_highlight_color[0] = FLT_MIN;
+	theme->handle_bevel_shadow_color[0] = FLT_MIN;
+
 	parse_hexstr("#ff0000", theme->window_toggled_keybinds_color);
 
 	theme->window[SSD_ACTIVE].title_bg.gradient = LAB_GRADIENT_NONE;
@@ -756,6 +804,138 @@ entry(struct theme *theme, const char *key, const char *value)
 	}
 	if (match_glob(key, "window.inactive.border.color.left")) {
 		parse_color(value, theme->window[SSD_INACTIVE].border_color_left);
+	}
+
+	/* Titlebar bevel lines (CDE/Motif relief) */
+	if (match_glob(key, "window.active.titlebar.bevel.highlight.color")) {
+		parse_color(value, theme->window[SSD_ACTIVE].titlebar_bevel_highlight_color);
+	}
+	if (match_glob(key, "window.active.titlebar.bevel.shadow.color")) {
+		parse_color(value, theme->window[SSD_ACTIVE].titlebar_bevel_shadow_color);
+	}
+	if (match_glob(key, "window.active.titlebar.bevel.width")) {
+		theme->window[SSD_ACTIVE].titlebar_bevel_width =
+			get_int_if_positive(value, "window.active.titlebar.bevel.width");
+	}
+	if (match_glob(key, "window.inactive.titlebar.bevel.highlight.color")) {
+		parse_color(value, theme->window[SSD_INACTIVE].titlebar_bevel_highlight_color);
+	}
+	if (match_glob(key, "window.inactive.titlebar.bevel.shadow.color")) {
+		parse_color(value, theme->window[SSD_INACTIVE].titlebar_bevel_shadow_color);
+	}
+	if (match_glob(key, "window.inactive.titlebar.bevel.width")) {
+		theme->window[SSD_INACTIVE].titlebar_bevel_width =
+			get_int_if_positive(value, "window.inactive.titlebar.bevel.width");
+	}
+
+	/* Multi-band border (CDE/Motif frame objects) */
+	if (match_glob(key, "window.active.frame.outer.width")) {
+		theme->window[SSD_ACTIVE].frame_outer_width =
+			get_int_if_positive(value, "window.active.frame.outer.width");
+	}
+	if (match_glob(key, "window.active.frame.outer.color.top")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_outer_color_top);
+	}
+	if (match_glob(key, "window.active.frame.outer.color.right")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_outer_color_right);
+	}
+	if (match_glob(key, "window.active.frame.outer.color.bottom")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_outer_color_bottom);
+	}
+	if (match_glob(key, "window.active.frame.outer.color.left")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_outer_color_left);
+	}
+	if (match_glob(key, "window.active.frame.inner.width")) {
+		theme->window[SSD_ACTIVE].frame_inner_width =
+			get_int_if_positive(value, "window.active.frame.inner.width");
+	}
+	if (match_glob(key, "window.active.frame.inner.color.top")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_inner_color_top);
+	}
+	if (match_glob(key, "window.active.frame.inner.color.right")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_inner_color_right);
+	}
+	if (match_glob(key, "window.active.frame.inner.color.bottom")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_inner_color_bottom);
+	}
+	if (match_glob(key, "window.active.frame.inner.color.left")) {
+		parse_color(value, theme->window[SSD_ACTIVE].frame_inner_color_left);
+	}
+	if (match_glob(key, "window.inactive.frame.outer.width")) {
+		theme->window[SSD_INACTIVE].frame_outer_width =
+			get_int_if_positive(value, "window.inactive.frame.outer.width");
+	}
+	if (match_glob(key, "window.inactive.frame.outer.color.top")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_outer_color_top);
+	}
+	if (match_glob(key, "window.inactive.frame.outer.color.right")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_outer_color_right);
+	}
+	if (match_glob(key, "window.inactive.frame.outer.color.bottom")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_outer_color_bottom);
+	}
+	if (match_glob(key, "window.inactive.frame.outer.color.left")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_outer_color_left);
+	}
+	if (match_glob(key, "window.inactive.frame.inner.width")) {
+		theme->window[SSD_INACTIVE].frame_inner_width =
+			get_int_if_positive(value, "window.inactive.frame.inner.width");
+	}
+	if (match_glob(key, "window.inactive.frame.inner.color.top")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_inner_color_top);
+	}
+	if (match_glob(key, "window.inactive.frame.inner.color.right")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_inner_color_right);
+	}
+	if (match_glob(key, "window.inactive.frame.inner.color.bottom")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_inner_color_bottom);
+	}
+	if (match_glob(key, "window.inactive.frame.inner.color.left")) {
+		parse_color(value, theme->window[SSD_INACTIVE].frame_inner_color_left);
+	}
+
+	/* Button bevel (P5): raised/sunken backgrounds for CDE/Motif buttons */
+	if (match_glob(key, "window.button.bg.color")) {
+		parse_color(value, theme->button_bg_color);
+	}
+	if (match_glob(key, "window.button.bg.highlight.color")) {
+		parse_color(value, theme->button_bg_highlight_color);
+	}
+	if (match_glob(key, "window.button.bg.shadow.color")) {
+		parse_color(value, theme->button_bg_shadow_color);
+	}
+	if (match_glob(key, "window.button.pressed.bg.color")) {
+		parse_color(value, theme->button_pressed_bg_color);
+	}
+	if (match_glob(key, "window.button.pressed.bg.highlight.color")) {
+		parse_color(value, theme->button_pressed_bg_highlight_color);
+	}
+	if (match_glob(key, "window.button.pressed.bg.shadow.color")) {
+		parse_color(value, theme->button_pressed_bg_shadow_color);
+	}
+
+	/* Separator groove (P6): line between titlebar and client area */
+	if (match_glob(key, "window.separator.groove.width")) {
+		theme->separator_groove_width =
+			get_int_if_positive(value, "window.separator.groove.width");
+	}
+	if (match_glob(key, "window.separator.groove.highlight.color")) {
+		parse_color(value, theme->separator_groove_highlight_color);
+	}
+	if (match_glob(key, "window.separator.groove.shadow.color")) {
+		parse_color(value, theme->separator_groove_shadow_color);
+	}
+
+	/* Bottom handle (P4): beveled strip at the bottom of the frame */
+	if (match_glob(key, "window.handle.height")) {
+		theme->handle_height =
+			get_int_if_positive(value, "window.handle.height");
+	}
+	if (match_glob(key, "window.handle.bevel.highlight.color")) {
+		parse_color(value, theme->handle_bevel_highlight_color);
+	}
+	if (match_glob(key, "window.handle.bevel.shadow.color")) {
+		parse_color(value, theme->handle_bevel_shadow_color);
 	}
 
 	if (match_glob(key, "window.active.indicator.toggled-keybind.color")) {
@@ -1782,6 +1962,123 @@ post_processing(struct theme *theme)
 				theme->window[i].border_color,
 				sizeof(theme->window[i].border_color_left));
 		}
+		/* Titlebar bevel color fallback: derive from border colors */
+		if (theme->window[i].titlebar_bevel_highlight_color[0] == FLT_MIN) {
+			memcpy(theme->window[i].titlebar_bevel_highlight_color,
+				theme->window[i].border_color_top,
+				sizeof(theme->window[i].titlebar_bevel_highlight_color));
+		}
+		if (theme->window[i].titlebar_bevel_shadow_color[0] == FLT_MIN) {
+			memcpy(theme->window[i].titlebar_bevel_shadow_color,
+				theme->window[i].border_color_bottom,
+				sizeof(theme->window[i].titlebar_bevel_shadow_color));
+		}
+
+		/* Multi-band border fallback: derive from per-edge colors */
+		if (theme->window[i].frame_outer_width > 0) {
+			/* Outer band fallback: use per-edge border colors */
+			if (theme->window[i].frame_outer_color_top[0] == FLT_MIN) {
+				memcpy(theme->window[i].frame_outer_color_top,
+					theme->window[i].border_color_top,
+					sizeof(theme->window[i].frame_outer_color_top));
+			}
+			if (theme->window[i].frame_outer_color_right[0] == FLT_MIN) {
+				memcpy(theme->window[i].frame_outer_color_right,
+					theme->window[i].border_color_right,
+					sizeof(theme->window[i].frame_outer_color_right));
+			}
+			if (theme->window[i].frame_outer_color_bottom[0] == FLT_MIN) {
+				memcpy(theme->window[i].frame_outer_color_bottom,
+					theme->window[i].border_color_bottom,
+					sizeof(theme->window[i].frame_outer_color_bottom));
+			}
+			if (theme->window[i].frame_outer_color_left[0] == FLT_MIN) {
+				memcpy(theme->window[i].frame_outer_color_left,
+					theme->window[i].border_color_left,
+					sizeof(theme->window[i].frame_outer_color_left));
+			}
+
+			/* Inner band fallback: use outer colors inverted (shadow↔highlight) */
+			if (theme->window[i].frame_inner_width > 0) {
+				if (theme->window[i].frame_inner_color_top[0] == FLT_MIN) {
+					memcpy(theme->window[i].frame_inner_color_top,
+						theme->window[i].frame_outer_color_bottom,
+						sizeof(theme->window[i].frame_inner_color_top));
+				}
+				if (theme->window[i].frame_inner_color_right[0] == FLT_MIN) {
+					memcpy(theme->window[i].frame_inner_color_right,
+						theme->window[i].frame_outer_color_left,
+						sizeof(theme->window[i].frame_inner_color_right));
+				}
+				if (theme->window[i].frame_inner_color_bottom[0] == FLT_MIN) {
+					memcpy(theme->window[i].frame_inner_color_bottom,
+						theme->window[i].frame_outer_color_top,
+						sizeof(theme->window[i].frame_inner_color_bottom));
+				}
+				if (theme->window[i].frame_inner_color_left[0] == FLT_MIN) {
+					memcpy(theme->window[i].frame_inner_color_left,
+						theme->window[i].frame_outer_color_right,
+						sizeof(theme->window[i].frame_inner_color_left));
+				}
+			}
+		}
+
+		/* Button bevel (P5) color fallback: derive from border colors */
+		if (theme->button_bg_color[0] == FLT_MIN) {
+			memcpy(theme->button_bg_color,
+				theme->window[i].title_bg.color,
+				sizeof(theme->button_bg_color));
+		}
+		if (theme->button_bg_highlight_color[0] == FLT_MIN) {
+			memcpy(theme->button_bg_highlight_color,
+				theme->window[i].border_color_top,
+				sizeof(theme->button_bg_highlight_color));
+		}
+		if (theme->button_bg_shadow_color[0] == FLT_MIN) {
+			memcpy(theme->button_bg_shadow_color,
+				theme->window[i].border_color_bottom,
+				sizeof(theme->button_bg_shadow_color));
+		}
+		if (theme->button_pressed_bg_color[0] == FLT_MIN) {
+			memcpy(theme->button_pressed_bg_color,
+				theme->button_bg_color,
+				sizeof(theme->button_pressed_bg_color));
+		}
+		if (theme->button_pressed_bg_highlight_color[0] == FLT_MIN) {
+			/* Pressed swaps highlight/shadow for sunken effect */
+			memcpy(theme->button_pressed_bg_highlight_color,
+				theme->button_bg_shadow_color,
+				sizeof(theme->button_pressed_bg_highlight_color));
+		}
+		if (theme->button_pressed_bg_shadow_color[0] == FLT_MIN) {
+			memcpy(theme->button_pressed_bg_shadow_color,
+				theme->button_bg_highlight_color,
+				sizeof(theme->button_pressed_bg_shadow_color));
+		}
+	}
+
+	/* Separator groove (P6) color fallback: derive from border colors */
+	if (theme->separator_groove_highlight_color[0] == FLT_MIN) {
+		memcpy(theme->separator_groove_highlight_color,
+			theme->window[SSD_ACTIVE].border_color_top,
+			sizeof(theme->separator_groove_highlight_color));
+	}
+	if (theme->separator_groove_shadow_color[0] == FLT_MIN) {
+		memcpy(theme->separator_groove_shadow_color,
+			theme->window[SSD_ACTIVE].border_color_bottom,
+			sizeof(theme->separator_groove_shadow_color));
+	}
+
+	/* Bottom handle (P4) color fallback: derive from border colors */
+	if (theme->handle_bevel_highlight_color[0] == FLT_MIN) {
+		memcpy(theme->handle_bevel_highlight_color,
+			theme->window[SSD_ACTIVE].border_color_top,
+			sizeof(theme->handle_bevel_highlight_color));
+	}
+	if (theme->handle_bevel_shadow_color[0] == FLT_MIN) {
+		memcpy(theme->handle_bevel_shadow_color,
+			theme->window[SSD_ACTIVE].border_color_bottom,
+			sizeof(theme->handle_bevel_shadow_color));
 	}
 
 	if (theme->menu_border_width == INT_MIN) {

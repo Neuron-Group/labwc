@@ -29,6 +29,11 @@
 #include <cairo.h>
 #include <wlr/types/wlr_buffer.h>
 
+enum lab_scale_filter {
+	LAB_SCALE_FILTER_BILINEAR, /* smooth scaling (default) */
+	LAB_SCALE_FILTER_NEAREST,  /* pixel-perfect scaling */
+};
+
 struct lab_data_buffer {
 	struct wlr_buffer base;
 
@@ -80,8 +85,13 @@ struct lab_data_buffer *buffer_create_from_wlr_buffer(
 /*
  * Resize a buffer to the given size. The source buffer is rendered at the
  * center of the output buffer and shrunk if it overflows from the output buffer.
+ *
+ * The filter parameter controls the interpolation mode:
+ *   LAB_SCALE_FILTER_BILINEAR - smooth scaling for photographs and SVGs
+ *   LAB_SCALE_FILTER_NEAREST  - pixel-perfect scaling for pixel-art and glyphs
  */
 struct lab_data_buffer *buffer_resize(struct lab_data_buffer *src_buffer,
-	int width, int height, double scale);
+	int width, int height, double scale,
+	enum lab_scale_filter filter);
 
 #endif /* LABWC_BUFFER_H */

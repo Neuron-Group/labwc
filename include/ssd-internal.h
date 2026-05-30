@@ -106,6 +106,12 @@ struct ssd {
 			struct scaled_font_buffer *title;
 			struct wl_list buttons_left; /* ssd_button.link */
 			struct wl_list buttons_right; /* ssd_button.link */
+			/* CDE/Motif titlebar bevel lines (P3) */
+			struct wlr_scene_rect *bevel_highlight;
+			struct wlr_scene_rect *bevel_shadow;
+			/* CDE/Motif separator groove (P6) */
+			struct wlr_scene_rect *groove_highlight;
+			struct wlr_scene_rect *groove_shadow;
 		} subtrees[2]; /* indexed by enum ssd_active_state */
 	} titlebar;
 
@@ -115,6 +121,9 @@ struct ssd {
 		struct ssd_border_subtree {
 			struct wlr_scene_tree *tree;
 			struct wlr_scene_rect *top, *bottom, *left, *right;
+			/* Multi-band border (P2): outer and inner bands */
+			struct wlr_scene_rect *outer_top, *outer_bottom, *outer_left, *outer_right;
+			struct wlr_scene_rect *inner_top, *inner_bottom, *inner_left, *inner_right;
 		} subtrees[2]; /* indexed by enum ssd_active_state */
 	} border;
 
@@ -126,6 +135,16 @@ struct ssd {
 				*top_left, *top_right, *bottom_left, *bottom_right;
 		} subtrees[2]; /* indexed by enum ssd_active_state */
 	} shadow;
+
+	/* Bottom handle (P4): beveled strip at the bottom of the frame */
+	struct ssd_handle_scene {
+		struct wlr_scene_tree *tree;
+		struct ssd_handle_subtree {
+			struct wlr_scene_tree *tree;
+			struct wlr_scene_rect *highlight;
+			struct wlr_scene_rect *shadow;
+		} subtrees[2]; /* indexed by enum ssd_active_state */
+	} handle;
 
 	/*
 	 * Space between the extremities of the view's wlr_surface
@@ -185,5 +204,9 @@ void ssd_extents_destroy(struct ssd *ssd);
 void ssd_shadow_create(struct ssd *ssd);
 void ssd_shadow_update(struct ssd *ssd);
 void ssd_shadow_destroy(struct ssd *ssd);
+
+void ssd_handle_create(struct ssd *ssd);
+void ssd_handle_update(struct ssd *ssd);
+void ssd_handle_destroy(struct ssd *ssd);
 
 #endif /* LABWC_SSD_INTERNAL_H */
