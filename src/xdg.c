@@ -1035,13 +1035,12 @@ handle_new_xdg_toplevel(struct wl_listener *listener, void *data)
 
 	/*
 	 * The xdg_toplevel_decoration and kde_server_decoration protocols
-	 * expects clients to use client side decorations unless server side
-	 * decorations are negotiated. So we default to client side ones here.
-	 *
-	 * TODO: We may want to assign the default based on a new rc.xml
-	 *       config option like "enforce-server" in the future.
+	 * let the compositor and client negotiate decoration preference when
+	 * the protocol object exists. If it does not, leave the preference
+	 * unspecified so view_wants_decorations() can fall back to the
+	 * configured core.decoration policy from rc.xml.
 	 */
-	view->ssd_preference = LAB_SSD_PREF_CLIENT;
+	view->ssd_preference = LAB_SSD_PREF_UNSPEC;
 
 	/*
 	 * xdg_toplevel_decoration and kde_server_decoration use this

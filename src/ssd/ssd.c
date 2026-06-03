@@ -55,7 +55,6 @@ ssd_thickness(struct view *view)
 		.bottom = theme->border_width + theme->handle_height,
 		.left = theme->border_width,
 	};
-
 	if (!view_titlebar_visible(view)) {
 		thickness.top -= theme->titlebar_height;
 	}
@@ -167,6 +166,7 @@ ssd_create(struct view *view, bool active)
 	 */
 	ssd_titlebar_create(ssd);
 	ssd_border_create(ssd);
+	wlr_scene_node_raise_to_top(&ssd->titlebar.tree->node);
 	ssd_handle_create(ssd);
 	if (!view_titlebar_visible(view)) {
 		/* Ensure we keep the old state on Reconfigure or when exiting fullscreen */
@@ -279,6 +279,10 @@ ssd_destroy(struct ssd *ssd)
 	if (server.hovered_button && node_view_from_node(
 			server.hovered_button->node) == view) {
 		server.hovered_button = NULL;
+	}
+	if (server.pressed_button && node_view_from_node(
+			server.pressed_button->node) == view) {
+		server.pressed_button = NULL;
 	}
 
 	/* Destroy subcomponents */

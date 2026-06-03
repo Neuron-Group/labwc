@@ -10,6 +10,58 @@
 #include "theme.h"
 #include "view.h"
 
+struct ssd_frame_band_geometry {
+	int outer_width;
+	int inner_width;
+	bool show_base_border;
+};
+
+static bool
+border_owns_top_edge(struct ssd *ssd)
+{
+	return ssd->titlebar.height <= 0 || ssd->state.was_squared;
+}
+
+static bool
+border_owns_title_zone_sides(struct ssd *ssd)
+{
+	return ssd->titlebar.height <= 0 || ssd->state.was_squared;
+}
+
+static struct ssd_frame_band_geometry
+get_frame_band_geometry(struct theme *theme, enum ssd_active_state active)
+{
+	int outer_width = MAX(theme->window[active].frame_outer_width, 0);
+	outer_width = MIN(outer_width, theme->border_width);
+
+	int inner_width = MAX(theme->window[active].frame_inner_width, 0);
+	inner_width = MIN(inner_width, theme->border_width - outer_width);
+
+	return (struct ssd_frame_band_geometry) {
+		.outer_width = outer_width,
+		.inner_width = inner_width,
+		.show_base_border = outer_width + inner_width < theme->border_width,
+	};
+}
+
+static int
+get_outer_top_y(struct ssd *ssd, bool full_top_border, int outer_width)
+{
+	if (full_top_border) {
+		return -(ssd->titlebar.height + rc.theme->border_width);
+	}
+	return -(ssd->titlebar.height + outer_width);
+}
+
+static int
+get_inner_top_y(struct ssd *ssd, bool full_top_border, int outer_width)
+{
+	if (full_top_border) {
+		return -(ssd->titlebar.height + rc.theme->border_width) + outer_width;
+	}
+	return -ssd->titlebar.height;
+}
+
 void
 ssd_border_create(struct ssd *ssd)
 {
@@ -22,6 +74,11 @@ ssd_border_create(struct ssd *ssd)
 	int height = view_effective_height(view, /* use_pending */ false);
 	int full_width = width + 2 * theme->border_width;
 	int corner_width = ssd_get_corner_width();
+	int top_y = -(ssd->titlebar.height + theme->border_width);
+	bool full_top_border = border_owns_top_edge(ssd);
+	bool full_side_border = border_owns_title_zone_sides(ssd);
+	int side_height = full_side_border ? height + ssd->titlebar.height : height;
+	int side_y = full_side_border ? -ssd->titlebar.height : 0;
 
 	ssd->border.tree = lab_wlr_scene_tree_create(ssd->tree);
 	wlr_scene_node_set_position(&ssd->border.tree->node, -theme->border_width, 0);
@@ -31,6 +88,8 @@ ssd_border_create(struct ssd *ssd)
 		struct ssd_border_subtree *subtree = &ssd->border.subtrees[active];
 		subtree->tree = lab_wlr_scene_tree_create(ssd->border.tree);
 		struct wlr_scene_tree *parent = subtree->tree;
+		struct ssd_frame_band_geometry frame =
+			get_frame_band_geometry(theme, active);
 		wlr_scene_node_set_enabled(&parent->node, active);
 		float *color_left = theme->window[active].border_color_left;
 		float *color_right = theme->window[active].border_color_right;
@@ -38,13 +97,13 @@ ssd_border_create(struct ssd *ssd)
 		float *color_bottom = theme->window[active].border_color_bottom;
 
 		subtree->left = lab_wlr_scene_rect_create(parent,
-			theme->border_width, height, color_left);
-		wlr_scene_node_set_position(&subtree->left->node, 0, 0);
+			theme->border_width, side_height, color_left);
+		wlr_scene_node_set_position(&subtree->left->node, 0, side_y);
 
 		subtree->right = lab_wlr_scene_rect_create(parent,
-			theme->border_width, height, color_right);
+			theme->border_width, side_height, color_right);
 		wlr_scene_node_set_position(&subtree->right->node,
-			theme->border_width + width, 0);
+			theme->border_width + width, side_y);
 
 		subtree->bottom = lab_wlr_scene_rect_create(parent,
 			full_width, theme->border_width, color_bottom);
@@ -55,11 +114,20 @@ ssd_border_create(struct ssd *ssd)
 			MAX(width - 2 * corner_width, 0), theme->border_width, color_top);
 		wlr_scene_node_set_position(&subtree->top->node,
 			theme->border_width + corner_width,
-			-(ssd->titlebar.height + theme->border_width));
+			top_y);
+
+		wlr_scene_node_set_enabled(&subtree->left->node,
+			frame.show_base_border);
+		wlr_scene_node_set_enabled(&subtree->right->node,
+			frame.show_base_border);
+		wlr_scene_node_set_enabled(&subtree->bottom->node,
+			frame.show_base_border);
+		wlr_scene_node_set_enabled(&subtree->top->node,
+			frame.show_base_border && full_top_border);
 
 		/* Multi-band border (P2): create outer and inner bands */
-		int outer_width = theme->window[active].frame_outer_width;
-		int inner_width = theme->window[active].frame_inner_width;
+		int outer_width = frame.outer_width;
+		int inner_width = frame.inner_width;
 
 		if (outer_width > 0) {
 			/* Outer band */
@@ -69,24 +137,26 @@ ssd_border_create(struct ssd *ssd)
 			float *outer_color_bottom = theme->window[active].frame_outer_color_bottom;
 
 			subtree->outer_left = lab_wlr_scene_rect_create(parent,
-				outer_width, height, outer_color_left);
-			wlr_scene_node_set_position(&subtree->outer_left->node, 0, 0);
+				outer_width, side_height, outer_color_left);
+			wlr_scene_node_set_position(&subtree->outer_left->node, 0, side_y);
 
 			subtree->outer_right = lab_wlr_scene_rect_create(parent,
-				outer_width, height, outer_color_right);
+				outer_width, side_height, outer_color_right);
 			wlr_scene_node_set_position(&subtree->outer_right->node,
-				outer_width + width, 0);
+				full_width - outer_width, side_y);
 
 			subtree->outer_bottom = lab_wlr_scene_rect_create(parent,
-				width + 2 * outer_width, outer_width, outer_color_bottom);
+				full_width, outer_width, outer_color_bottom);
 			wlr_scene_node_set_position(&subtree->outer_bottom->node,
-				0, height);
+				0, height + inner_width);
 
 			subtree->outer_top = lab_wlr_scene_rect_create(parent,
 				MAX(width - 2 * corner_width, 0), outer_width, outer_color_top);
 			wlr_scene_node_set_position(&subtree->outer_top->node,
-				outer_width + corner_width,
-				-(ssd->titlebar.height + outer_width));
+				theme->border_width + corner_width,
+				get_outer_top_y(ssd, full_top_border, outer_width));
+			wlr_scene_node_set_enabled(&subtree->outer_top->node,
+				full_top_border);
 
 			/* Inner band (adjacent to outer band) */
 			if (inner_width > 0) {
@@ -96,27 +166,30 @@ ssd_border_create(struct ssd *ssd)
 				float *inner_color_bottom = theme->window[active].frame_inner_color_bottom;
 
 				subtree->inner_left = lab_wlr_scene_rect_create(parent,
-					inner_width, height, inner_color_left);
+					inner_width, side_height, inner_color_left);
 				wlr_scene_node_set_position(&subtree->inner_left->node,
-					outer_width, 0);
+					outer_width, side_y);
 
 				subtree->inner_right = lab_wlr_scene_rect_create(parent,
-					inner_width, height, inner_color_right);
+					inner_width, side_height, inner_color_right);
 				wlr_scene_node_set_position(&subtree->inner_right->node,
-					outer_width + width, 0);
+					full_width - outer_width - inner_width, side_y);
 
 				subtree->inner_bottom = lab_wlr_scene_rect_create(parent,
-					width + 2 * outer_width + 2 * inner_width, inner_width,
+					full_width - 2 * outer_width, inner_width,
 					inner_color_bottom);
 				wlr_scene_node_set_position(&subtree->inner_bottom->node,
-					0, height + outer_width);
+					outer_width, height);
 
 				subtree->inner_top = lab_wlr_scene_rect_create(parent,
-					MAX(width - 2 * corner_width, 0), inner_width,
+					MAX(width - 2 * corner_width - 2 * outer_width, 0),
+					inner_width,
 					inner_color_top);
 				wlr_scene_node_set_position(&subtree->inner_top->node,
-					outer_width + corner_width,
-					-(ssd->titlebar.height + outer_width + inner_width));
+					theme->border_width + corner_width + outer_width,
+					get_inner_top_y(ssd, full_top_border, outer_width));
+				wlr_scene_node_set_enabled(&subtree->inner_top->node,
+					full_top_border);
 			}
 		}
 	}
@@ -162,6 +235,7 @@ ssd_border_update(struct ssd *ssd)
 	int height = view_effective_height(view, /* use_pending */ false);
 	int full_width = width + 2 * theme->border_width;
 	int corner_width = ssd_get_corner_width();
+	int top_y = -(ssd->titlebar.height + theme->border_width);
 
 	/*
 	 * From here on we have to cover the following border scenarios:
@@ -182,22 +256,22 @@ ssd_border_update(struct ssd *ssd)
 	 *  |_______________|
 	 */
 
-	int side_height = ssd->state.was_squared
-		? height + ssd->titlebar.height
-		: height;
-	int side_y = ssd->state.was_squared
-		? -ssd->titlebar.height
-		: 0;
+	bool full_side_border = border_owns_title_zone_sides(ssd);
+	int side_height = full_side_border ? height + ssd->titlebar.height : height;
+	int side_y = full_side_border ? -ssd->titlebar.height : 0;
 	int top_width = ssd->titlebar.height <= 0 || ssd->state.was_squared
 		? full_width
 		: MAX(width - 2 * corner_width, 0);
 	int top_x = ssd->titlebar.height <= 0 || ssd->state.was_squared
 		? 0
 		: theme->border_width + corner_width;
+	bool full_top_border = border_owns_top_edge(ssd);
 
 	enum ssd_active_state active;
 	FOR_EACH_ACTIVE_STATE(active) {
 		struct ssd_border_subtree *subtree = &ssd->border.subtrees[active];
+		struct ssd_frame_band_geometry frame =
+			get_frame_band_geometry(theme, active);
 
 		wlr_scene_rect_set_size(subtree->left,
 			theme->border_width, side_height);
@@ -217,11 +291,20 @@ ssd_border_update(struct ssd *ssd)
 		wlr_scene_rect_set_size(subtree->top,
 			top_width, theme->border_width);
 		wlr_scene_node_set_position(&subtree->top->node,
-			top_x, -(ssd->titlebar.height + theme->border_width));
+			top_x, top_y);
+
+		wlr_scene_node_set_enabled(&subtree->left->node,
+			frame.show_base_border);
+		wlr_scene_node_set_enabled(&subtree->right->node,
+			frame.show_base_border);
+		wlr_scene_node_set_enabled(&subtree->bottom->node,
+			frame.show_base_border);
+		wlr_scene_node_set_enabled(&subtree->top->node,
+			frame.show_base_border && full_top_border);
 
 		/* Multi-band border (P2): update outer and inner bands */
-		int outer_width = theme->window[active].frame_outer_width;
-		int inner_width = theme->window[active].frame_inner_width;
+		int outer_width = frame.outer_width;
+		int inner_width = frame.inner_width;
 
 		if (outer_width > 0 && subtree->outer_left) {
 			/* Outer band */
@@ -233,17 +316,20 @@ ssd_border_update(struct ssd *ssd)
 			wlr_scene_rect_set_size(subtree->outer_right,
 				outer_width, side_height);
 			wlr_scene_node_set_position(&subtree->outer_right->node,
-				outer_width + width, side_y);
+				full_width - outer_width, side_y);
 
 			wlr_scene_rect_set_size(subtree->outer_bottom,
-				width + 2 * outer_width, outer_width);
+				full_width, outer_width);
 			wlr_scene_node_set_position(&subtree->outer_bottom->node,
-				0, height);
+				0, height + inner_width);
 
 			wlr_scene_rect_set_size(subtree->outer_top,
 				top_width, outer_width);
 			wlr_scene_node_set_position(&subtree->outer_top->node,
-				top_x, -(ssd->titlebar.height + outer_width));
+				top_x,
+				get_outer_top_y(ssd, full_top_border, outer_width));
+			wlr_scene_node_set_enabled(&subtree->outer_top->node,
+				full_top_border);
 
 			/* Inner band */
 			if (inner_width > 0 && subtree->inner_left) {
@@ -255,17 +341,20 @@ ssd_border_update(struct ssd *ssd)
 				wlr_scene_rect_set_size(subtree->inner_right,
 					inner_width, side_height);
 				wlr_scene_node_set_position(&subtree->inner_right->node,
-					outer_width + width, side_y);
+					full_width - outer_width - inner_width, side_y);
 
 				wlr_scene_rect_set_size(subtree->inner_bottom,
-					width + 2 * outer_width + 2 * inner_width, inner_width);
+					full_width - 2 * outer_width, inner_width);
 				wlr_scene_node_set_position(&subtree->inner_bottom->node,
-					0, height + outer_width);
+					outer_width, height);
 
 				wlr_scene_rect_set_size(subtree->inner_top,
-					top_width, inner_width);
+					MAX(top_width - 2 * outer_width, 0), inner_width);
 				wlr_scene_node_set_position(&subtree->inner_top->node,
-					top_x, -(ssd->titlebar.height + outer_width + inner_width));
+					top_x + outer_width,
+					get_inner_top_y(ssd, full_top_border, outer_width));
+				wlr_scene_node_set_enabled(&subtree->inner_top->node,
+					full_top_border);
 			}
 		}
 	}

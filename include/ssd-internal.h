@@ -12,6 +12,22 @@ struct ssd_state_title_width {
 	bool truncated;
 };
 
+struct ssd_compartment_relief {
+	struct wlr_scene_rect *top;
+	struct wlr_scene_rect *left;
+	struct wlr_scene_rect *bottom;
+	struct wlr_scene_rect *right;
+};
+
+struct ssd_shoulder_relief {
+	struct wlr_scene_rect *top;
+	struct wlr_scene_rect *outer;
+	struct wlr_scene_rect *cap_return;
+	struct wlr_scene_rect *inner;
+	struct wlr_scene_rect *cap_underside;
+	struct wlr_scene_rect *bottom;
+};
+
 /*
  * The scene-graph of SSD looks like below. The parentheses indicate the
  * type of each node (enum lab_node_type, stored in the node_descriptor
@@ -100,15 +116,22 @@ struct ssd {
 		struct wlr_scene_tree *tree;
 		struct ssd_titlebar_subtree {
 			struct wlr_scene_tree *tree;
-			struct wlr_scene_buffer *corner_left;
-			struct wlr_scene_buffer *corner_right;
 			struct wlr_scene_buffer *bar;
+			struct wlr_scene_rect *top_border_fill;
+			struct wlr_scene_rect *left_shoulder_top_fill;
+			struct wlr_scene_rect *left_shoulder_stile_fill;
+			struct wlr_scene_rect *right_shoulder_top_fill;
+			struct wlr_scene_rect *right_shoulder_stile_fill;
 			struct scaled_font_buffer *title;
 			struct wl_list buttons_left; /* ssd_button.link */
 			struct wl_list buttons_right; /* ssd_button.link */
-			/* CDE/Motif titlebar bevel lines (P3) */
-			struct wlr_scene_rect *bevel_highlight;
-			struct wlr_scene_rect *bevel_shadow;
+			/* Raised shoulder placeholders flanking the title field */
+			struct ssd_shoulder_relief left_shoulder;
+			struct ssd_shoulder_relief right_shoulder;
+			/* Raised top border segment above the title field */
+			struct ssd_compartment_relief top_border;
+			/* Raised title field inside the full titlebar strip */
+			struct ssd_compartment_relief title_field;
 			/* CDE/Motif separator groove (P6) */
 			struct wlr_scene_rect *groove_highlight;
 			struct wlr_scene_rect *groove_shadow;
@@ -157,6 +180,15 @@ struct ssd {
 struct ssd_button {
 	struct wlr_scene_node *node;
 	enum lab_node_type type;
+	struct wlr_scene_tree *content_tree;
+	struct wlr_scene_rect *bg_fill;
+	struct wlr_scene_rect *bg_top;
+	struct wlr_scene_rect *bg_left;
+	struct wlr_scene_rect *bg_bottom;
+	struct wlr_scene_rect *bg_right;
+	int content_x;
+	int content_y;
+	bool pressed;
 
 	/*
 	 * Bitmap of lab_button_state that represents a combination of
@@ -186,6 +218,7 @@ struct ssd_button *attach_ssd_button(struct wl_list *button_parts,
 	enum lab_node_type type, struct wlr_scene_tree *parent,
 	struct lab_img *imgs[LAB_BS_ALL + 1], int x, int y,
 	struct view *view);
+void ssd_button_set_pressed(struct ssd_button *button, bool pressed);
 
 /* SSD internal */
 void ssd_titlebar_create(struct ssd *ssd);

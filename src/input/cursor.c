@@ -1140,6 +1140,7 @@ bool
 cursor_process_button_press(struct seat *seat, uint32_t button, uint32_t time_msec)
 {
 	struct cursor_context ctx = get_cursor_context();
+	ssd_update_pressed_button(ctx.node);
 
 	/* Used on next button release to check if it can close menu or select menu item */
 	press_msec = time_msec;
@@ -1212,6 +1213,7 @@ cursor_process_button_release(struct seat *seat, uint32_t button,
 {
 	struct cursor_context ctx = get_cursor_context();
 	struct wlr_surface *pressed_surface = seat->pressed.ctx.surface;
+	ssd_update_pressed_button(NULL);
 
 	/* Always notify button release event when it's not bound */
 	const bool notify = !lab_set_contains(&seat->bound_buttons, button);

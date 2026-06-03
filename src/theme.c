@@ -184,10 +184,23 @@ load_button(struct theme *theme, struct button *b, enum ssd_active_state active)
 	}
 #endif
 
+	/* XPM */
+	if (!*img) {
+		get_button_filename(filename, sizeof(filename), b->name,
+			active ? "-active.xpm" : "-inactive.xpm");
+		*img = lab_img_load(LAB_IMG_XPM, filename, NULL);
+	}
+
 	/* XBM */
 	if (!*img) {
 		get_button_filename(filename, sizeof(filename), b->name, ".xbm");
 		*img = lab_img_load(LAB_IMG_XBM, filename, rgba);
+	}
+
+	/* XPM (non-stateful fallback) */
+	if (!*img) {
+		get_button_filename(filename, sizeof(filename), b->name, ".xpm");
+		*img = lab_img_load(LAB_IMG_XPM, filename, NULL);
 	}
 
 	/*
@@ -198,6 +211,12 @@ load_button(struct theme *theme, struct button *b, enum ssd_active_state active)
 		get_button_filename(filename, sizeof(filename),
 			b->alt_name, ".xbm");
 		*img = lab_img_load(LAB_IMG_XBM, filename, rgba);
+	}
+
+	if (!*img && b->alt_name) {
+		get_button_filename(filename, sizeof(filename),
+			b->alt_name, ".xpm");
+		*img = lab_img_load(LAB_IMG_XPM, filename, NULL);
 	}
 
 	/*

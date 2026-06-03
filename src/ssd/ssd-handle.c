@@ -10,6 +10,18 @@
 #include "theme.h"
 #include "view.h"
 
+static int
+handle_highlight_height(int handle_h)
+{
+	return MAX(handle_h / 2, 1);
+}
+
+static int
+handle_shadow_height(int handle_h)
+{
+	return MAX(handle_h - handle_highlight_height(handle_h), 1);
+}
+
 void
 ssd_handle_create(struct ssd *ssd)
 {
@@ -27,7 +39,7 @@ ssd_handle_create(struct ssd *ssd)
 
 	ssd->handle.tree = lab_wlr_scene_tree_create(ssd->tree);
 	wlr_scene_node_set_position(&ssd->handle.tree->node,
-		-theme->border_width, height);
+		-theme->border_width, height + theme->border_width);
 
 	enum ssd_active_state active;
 	FOR_EACH_ACTIVE_STATE(active) {
@@ -39,14 +51,16 @@ ssd_handle_create(struct ssd *ssd)
 		int full_width = width + 2 * theme->border_width;
 		float *hl = theme->handle_bevel_highlight_color;
 		float *sh = theme->handle_bevel_shadow_color;
+		int hl_h = handle_highlight_height(handle_h);
+		int sh_h = handle_shadow_height(handle_h);
 
 		subtree->highlight = lab_wlr_scene_rect_create(
-			parent, full_width, handle_h, hl);
+			parent, full_width, hl_h, hl);
 		wlr_scene_node_set_position(&subtree->highlight->node, 0, 0);
 
 		subtree->shadow = lab_wlr_scene_rect_create(
-			parent, full_width, handle_h, sh);
-		wlr_scene_node_set_position(&subtree->shadow->node, 0, handle_h);
+			parent, full_width, sh_h, sh);
+		wlr_scene_node_set_position(&subtree->shadow->node, 0, hl_h);
 	}
 
 	if (view->maximized == VIEW_AXIS_BOTH) {
@@ -80,19 +94,21 @@ ssd_handle_update(struct ssd *ssd)
 	}
 
 	int full_width = width + 2 * theme->border_width;
+	int hl_h = handle_highlight_height(handle_h);
+	int sh_h = handle_shadow_height(handle_h);
 
 	wlr_scene_node_set_position(&ssd->handle.tree->node,
-		-theme->border_width, height);
+		-theme->border_width, height + theme->border_width);
 
 	enum ssd_active_state active;
 	FOR_EACH_ACTIVE_STATE(active) {
 		struct ssd_handle_subtree *subtree = &ssd->handle.subtrees[active];
 		wlr_scene_rect_set_size(subtree->highlight,
-			full_width, handle_h);
+			full_width, hl_h);
 		wlr_scene_rect_set_size(subtree->shadow,
-			full_width, handle_h);
+			full_width, sh_h);
 		wlr_scene_node_set_position(&subtree->shadow->node,
-			0, handle_h);
+			0, hl_h);
 	}
 }
 
