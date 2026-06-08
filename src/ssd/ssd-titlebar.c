@@ -16,6 +16,7 @@
 #include "scaled-buffer/scaled-img-buffer.h"
 #include "ssd.h"
 #include "ssd-internal.h"
+#include "ssd-shape.h"
 #include "theme.h"
 #include "view.h"
 
@@ -189,153 +190,6 @@ get_titlebar_layout(struct ssd *ssd, bool squared, struct titlebar_layout *layou
 }
 
 static void
-create_compartment_relief(struct wlr_scene_tree *parent,
-		struct ssd_compartment_relief *relief,
-		const float top_left_color[4],
-		const float bottom_right_color[4])
-{
-	relief->top = lab_wlr_scene_rect_create(parent, 1, 1, top_left_color);
-	relief->left = lab_wlr_scene_rect_create(parent, 1, 1, top_left_color);
-	relief->bottom = lab_wlr_scene_rect_create(parent, 1, 1,
-		bottom_right_color);
-	relief->right = lab_wlr_scene_rect_create(parent, 1, 1,
-		bottom_right_color);
-}
-
-static void
-create_shoulder_relief(struct wlr_scene_tree *parent,
-		struct ssd_shoulder_relief *relief,
-		const float top_left_color[4],
-		const float bottom_right_color[4],
-		bool right_side)
-{
-	relief->top = lab_wlr_scene_rect_create(parent, 1, 1, top_left_color);
-	relief->outer = lab_wlr_scene_rect_create(parent, 1, 1,
-		right_side ? bottom_right_color : top_left_color);
-	relief->cap_return = lab_wlr_scene_rect_create(parent, 1, 1,
-		right_side ? top_left_color : bottom_right_color);
-	relief->inner = lab_wlr_scene_rect_create(parent, 1, 1,
-		right_side ? top_left_color : bottom_right_color);
-	relief->cap_underside = lab_wlr_scene_rect_create(parent, 1, 1,
-		bottom_right_color);
-	relief->bottom = lab_wlr_scene_rect_create(parent, 1, 1,
-		bottom_right_color);
-}
-
-static void
-update_compartment_relief(struct ssd_compartment_relief *relief,
-		int x, int y, int width, int height, int bevel_w)
-{
-	bool visible = width > 0 && height > 0 && bevel_w > 0;
-
-	if (!relief->top) {
-		return;
-	}
-
-	wlr_scene_node_set_enabled(&relief->top->node, visible);
-	wlr_scene_node_set_enabled(&relief->left->node, visible);
-	wlr_scene_node_set_enabled(&relief->bottom->node, visible);
-	wlr_scene_node_set_enabled(&relief->right->node, visible);
-	if (!visible) {
-		return;
-	}
-
-	wlr_scene_rect_set_size(relief->top, width, bevel_w);
-	wlr_scene_node_set_position(&relief->top->node, x, y);
-	wlr_scene_rect_set_size(relief->left, bevel_w, height);
-	wlr_scene_node_set_position(&relief->left->node, x, y);
-	wlr_scene_rect_set_size(relief->bottom, width, bevel_w);
-	wlr_scene_node_set_position(&relief->bottom->node, x,
-		y + height - bevel_w);
-	wlr_scene_rect_set_size(relief->right, bevel_w, height);
-	wlr_scene_node_set_position(&relief->right->node,
-		x + width - bevel_w, y);
-}
-
-static void
-update_shoulder_relief(struct ssd_shoulder_relief *relief,
-		int x, int y, int width, int height,
-		int stile_w, int cap_h, int bevel_w, bool right_side)
-{
-	bool visible = width > 0 && height > 0 && bevel_w > 0;
-	int stile_end_x;
-	int stile_start_x;
-	int cap_return_x;
-	int cap_return_h;
-	int inner_h;
-	int cap_underside_x;
-	int cap_underside_w;
-	int bottom_x;
-	int bottom_w;
-
-	if (!relief->top) {
-		return;
-	}
-
-	wlr_scene_node_set_enabled(&relief->top->node, visible);
-	wlr_scene_node_set_enabled(&relief->outer->node, visible);
-	wlr_scene_node_set_enabled(&relief->cap_return->node, visible);
-	wlr_scene_node_set_enabled(&relief->inner->node, visible);
-	wlr_scene_node_set_enabled(&relief->cap_underside->node, visible);
-	wlr_scene_node_set_enabled(&relief->bottom->node, visible);
-	if (!visible) {
-		return;
-	}
-
-	stile_w = MIN(stile_w, width);
-	cap_h = MIN(cap_h, height);
-	stile_w = MAX(stile_w, bevel_w);
-	cap_h = MAX(cap_h, bevel_w);
-	cap_return_h = MAX(cap_h, bevel_w);
-	inner_h = MAX(height - cap_h, bevel_w);
-
-	wlr_scene_rect_set_size(relief->top, width, bevel_w);
-	wlr_scene_node_set_position(&relief->top->node, x, y);
-
-	if (right_side) {
-		stile_start_x = x + width - stile_w;
-		cap_return_x = x;
-		cap_underside_x = x;
-		cap_underside_w = MAX(stile_start_x - x + bevel_w, bevel_w);
-		bottom_x = stile_start_x;
-		bottom_w = MAX(x + width - stile_start_x, bevel_w);
-
-		wlr_scene_rect_set_size(relief->outer, bevel_w, height);
-		wlr_scene_node_set_position(&relief->outer->node,
-			x + width - bevel_w, y);
-		wlr_scene_rect_set_size(relief->cap_return, bevel_w, cap_return_h);
-		wlr_scene_node_set_position(&relief->cap_return->node,
-			cap_return_x, y);
-		wlr_scene_rect_set_size(relief->inner, bevel_w, inner_h);
-		wlr_scene_node_set_position(&relief->inner->node,
-			stile_start_x, y + cap_h);
-	} else {
-		stile_end_x = x + stile_w - bevel_w;
-		cap_return_x = x + width - bevel_w;
-		cap_underside_x = x + stile_w - bevel_w;
-		cap_underside_w = MAX(x + width - cap_underside_x, bevel_w);
-		bottom_x = x;
-		bottom_w = MAX(stile_w, bevel_w);
-
-		wlr_scene_rect_set_size(relief->outer, bevel_w, height);
-		wlr_scene_node_set_position(&relief->outer->node, x, y);
-		wlr_scene_rect_set_size(relief->cap_return, bevel_w, cap_return_h);
-		wlr_scene_node_set_position(&relief->cap_return->node,
-			cap_return_x, y);
-		wlr_scene_rect_set_size(relief->inner, bevel_w, inner_h);
-		wlr_scene_node_set_position(&relief->inner->node,
-			stile_end_x, y + cap_h);
-	}
-
-	wlr_scene_rect_set_size(relief->cap_underside, cap_underside_w, bevel_w);
-	wlr_scene_node_set_position(&relief->cap_underside->node,
-		cap_underside_x, y + cap_h - bevel_w);
-	wlr_scene_rect_set_size(relief->bottom, bottom_w, bevel_w);
-	wlr_scene_node_set_position(&relief->bottom->node,
-		bottom_x, y + height - bevel_w);
-}
-
-static void
 update_titlebar_relief(struct ssd_titlebar_subtree *subtree,
 		enum ssd_active_state active, struct titlebar_layout *layout)
 {
@@ -343,14 +197,20 @@ update_titlebar_relief(struct ssd_titlebar_subtree *subtree,
 	int bevel_w = theme->window[active].titlebar_bevel_width;
 	int content_y = 0;
 	int content_height = get_titlebar_inner_height(theme);
-	int shoulder_height = theme->titlebar_height + theme->border_width;
+	if (subtree->left_shoulder_shape) {
+		wlr_scene_node_set_enabled(&subtree->left_shoulder_shape->node,
+			false);
+	}
+	if (subtree->right_shoulder_shape) {
+		wlr_scene_node_set_enabled(&subtree->right_shoulder_shape->node,
+			false);
+	}
 	if (subtree->left_shoulder_top_fill && subtree->left_shoulder_stile_fill) {
-		bool show_left_shoulder = layout->left_shoulder_width > 0;
 		wlr_scene_node_set_enabled(&subtree->left_shoulder_top_fill->node,
-			show_left_shoulder);
+			false);
 		wlr_scene_node_set_enabled(&subtree->left_shoulder_stile_fill->node,
-			show_left_shoulder);
-		if (show_left_shoulder) {
+			false);
+		if (false) {
 			wlr_scene_rect_set_size(subtree->left_shoulder_top_fill,
 				layout->left_shoulder_width, theme->border_width);
 			wlr_scene_node_set_position(
@@ -363,17 +223,14 @@ update_titlebar_relief(struct ssd_titlebar_subtree *subtree,
 				layout->left_shoulder_x, 0);
 		}
 	}
-	update_shoulder_relief(&subtree->left_shoulder,
-		layout->left_shoulder_x, -theme->border_width,
-		layout->left_shoulder_width, shoulder_height,
-		theme->border_width, theme->border_width, bevel_w, false);
+	ssd_shoulder_relief_update(&subtree->left_shoulder,
+		0, 0, 0, 0, 0, false, SSD_SHOULDER_TOP);
 	if (subtree->right_shoulder_top_fill && subtree->right_shoulder_stile_fill) {
-		bool show_right_shoulder = layout->right_shoulder_width > 0;
 		wlr_scene_node_set_enabled(&subtree->right_shoulder_top_fill->node,
-			show_right_shoulder);
+			false);
 		wlr_scene_node_set_enabled(&subtree->right_shoulder_stile_fill->node,
-			show_right_shoulder);
-		if (show_right_shoulder) {
+			false);
+		if (false) {
 			wlr_scene_rect_set_size(subtree->right_shoulder_top_fill,
 				layout->right_shoulder_width, theme->border_width);
 			wlr_scene_node_set_position(
@@ -388,28 +245,17 @@ update_titlebar_relief(struct ssd_titlebar_subtree *subtree,
 				0);
 		}
 	}
-	update_shoulder_relief(&subtree->right_shoulder,
-		layout->right_shoulder_x, -theme->border_width,
-		layout->right_shoulder_width, shoulder_height,
-		theme->border_width, theme->border_width, bevel_w, true);
+	ssd_shoulder_relief_update(&subtree->right_shoulder,
+		0, 0, 0, 0, 0, true, SSD_SHOULDER_TOP);
 	if (subtree->top_border_fill) {
-		bool show_top_border = theme->border_width > 0
-			&& layout->top_border_width > 0;
 		wlr_scene_node_set_enabled(
-			&subtree->top_border_fill->node, show_top_border);
-		if (show_top_border) {
-			wlr_scene_rect_set_size(subtree->top_border_fill,
-				layout->top_border_width, theme->border_width);
-			wlr_scene_node_set_position(
-				&subtree->top_border_fill->node,
-				layout->top_border_x, -theme->border_width);
-		}
+			&subtree->top_border_fill->node, false);
 	}
-	update_compartment_relief(&subtree->top_border,
-		layout->top_border_x, -theme->border_width, layout->top_border_width,
-		theme->border_width, bevel_w);
-	update_compartment_relief(&subtree->title_field,
-		layout->bar_x, content_y, layout->bar_width, content_height, bevel_w);
+	ssd_compartment_relief_update(&subtree->top_border, 0, 0, 0);
+	wlr_scene_node_set_position(&subtree->title_field.tree->node,
+		layout->bar_x, content_y);
+	ssd_compartment_relief_update(&subtree->title_field,
+		layout->bar_width, content_height, bevel_w);
 
 	int groove_w = theme->separator_groove_width;
 	if (groove_w > 0 && subtree->groove_highlight) {
@@ -463,6 +309,8 @@ ssd_titlebar_create(struct ssd *ssd)
 		}
 		wlr_scene_node_set_position(&subtree->bar->node,
 			layout.bar_x, 0);
+		subtree->left_shoulder_shape = lab_wlr_scene_buffer_create(parent, NULL);
+		subtree->right_shoulder_shape = lab_wlr_scene_buffer_create(parent, NULL);
 
 		subtree->left_shoulder_top_fill = lab_wlr_scene_rect_create(parent,
 			1, 1, theme->window[active].title_bg.color);
@@ -476,17 +324,22 @@ ssd_titlebar_create(struct ssd *ssd)
 			1, 1, theme->window[active].title_bg.color);
 
 		/* Titlebar bevel lines (CDE/Motif relief) */
-		int bevel_w = theme->window[active].titlebar_bevel_width;
-		if (bevel_w > 0) {
-			float *hl = theme->window[active].titlebar_bevel_highlight_color;
-			float *sh = theme->window[active].titlebar_bevel_shadow_color;
-			create_shoulder_relief(parent, &subtree->left_shoulder,
-				hl, sh, false);
-			create_shoulder_relief(parent, &subtree->right_shoulder,
-				hl, sh, true);
-			create_compartment_relief(parent, &subtree->top_border, hl, sh);
-			create_compartment_relief(parent, &subtree->title_field, hl, sh);
-		}
+		float *hl = theme->window[active].titlebar_bevel_highlight_color;
+		float *sh = theme->window[active].titlebar_bevel_shadow_color;
+		ssd_shoulder_relief_create(parent, &subtree->left_shoulder,
+			hl, sh, SSD_RELIEF_MODE_RELIEF,
+			SSD_RELIEF_FACE_UP, SSD_RELIEF_FACE_LEFT,
+			SSD_RELIEF_FACE_RIGHT, SSD_RELIEF_FACE_RIGHT,
+			SSD_RELIEF_FACE_DOWN, SSD_RELIEF_FACE_DOWN);
+		ssd_shoulder_relief_create(parent, &subtree->right_shoulder,
+			hl, sh, SSD_RELIEF_MODE_RELIEF,
+			SSD_RELIEF_FACE_UP, SSD_RELIEF_FACE_RIGHT,
+			SSD_RELIEF_FACE_LEFT, SSD_RELIEF_FACE_LEFT,
+			SSD_RELIEF_FACE_DOWN, SSD_RELIEF_FACE_DOWN);
+		ssd_compartment_relief_create(parent, &subtree->top_border,
+			hl, sh, SSD_RELIEF_MODE_RELIEF);
+		ssd_compartment_relief_create(parent, &subtree->title_field,
+			hl, sh, SSD_RELIEF_MODE_RELIEF);
 		update_titlebar_relief(subtree, active, &layout);
 
 		/* Separator groove (P6): thin line between titlebar and client */

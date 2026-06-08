@@ -42,23 +42,7 @@ struct button {
 	uint8_t state_set;
 };
 
-enum rounded_corner {
-	ROUNDED_CORNER_TOP_LEFT,
-	ROUNDED_CORNER_TOP_RIGHT
-};
-
-struct rounded_corner_ctx {
-	struct wlr_box *box;
-	double radius;
-	double line_width;
-	cairo_pattern_t *fill_pattern;
-	float *border_color;
-	enum rounded_corner corner;
-};
-
 #define zero_array(arr) memset(arr, 0, sizeof(arr))
-
-static struct lab_data_buffer *rounded_rect(struct rounded_corner_ctx *ctx);
 
 /* 1 degree in radians (=2π/360) */
 static const double deg = 0.017453292519943295;
@@ -1408,173 +1392,6 @@ theme_read(struct theme *theme, struct wl_list *paths)
 	}
 }
 
-static struct lab_data_buffer *
-rounded_rect(struct rounded_corner_ctx *ctx)
-{
-	double w = ctx->box->width;
-	double h = ctx->box->height;
-	double r = ctx->radius;
-
-	struct lab_data_buffer *buffer;
-	/* TODO: scale */
-	buffer = buffer_create_cairo(w, h, 1);
-
-	cairo_surface_t *surf = buffer->surface;
-	cairo_t *cairo = cairo_create(surf);
-
-	/* set transparent background */
-	cairo_set_operator(cairo, CAIRO_OPERATOR_CLEAR);
-	cairo_paint(cairo);
-
-	/*
-	 * Create outline path and fill. Illustration of top-left corner buffer:
-	 *
-	 *          _,,ooO"""""""""+
-	 *        ,oO"'   ^        |
-	 *      ,o"       |        |
-	 *     o"         |r       |
-	 *    o'          |        |
-	 *    O     r     v        |
-	 *    O<--------->+        |
-	 *    O                    |
-	 *    O                    |
-	 *    O                    |
-	 *    +--------------------+
-	 */
-	cairo_set_line_width(cairo, 0.0);
-	cairo_new_sub_path(cairo);
-	switch (ctx->corner) {
-	case ROUNDED_CORNER_TOP_LEFT:
-		cairo_arc(cairo, r, r, r, 180 * deg, 270 * deg);
-		cairo_line_to(cairo, w, 0);
-		cairo_line_to(cairo, w, h);
-		cairo_line_to(cairo, 0, h);
-		break;
-	case ROUNDED_CORNER_TOP_RIGHT:
-		cairo_arc(cairo, w - r, r, r, -90 * deg, 0 * deg);
-		cairo_line_to(cairo, w, h);
-		cairo_line_to(cairo, 0, h);
-		cairo_line_to(cairo, 0, 0);
-		break;
-	}
-	cairo_close_path(cairo);
-	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
-	/*
-	 * We need to offset the fill pattern vertically by the border
-	 * width to line up with the rest of the titlebar. This is done
-	 * by applying a transformation matrix to the pattern temporarily.
-	 * It would be better to copy the pattern, but cairo does not
-	 * provide a simple way to this.
-	 */
-	cairo_matrix_t matrix;
-	cairo_matrix_init_translate(&matrix, 0, -ctx->line_width);
-	cairo_pattern_set_matrix(ctx->fill_pattern, &matrix);
-	cairo_set_source(cairo, ctx->fill_pattern);
-	cairo_fill_preserve(cairo);
-	cairo_stroke(cairo);
-
-	/* Reset the fill pattern transformation matrix afterward */
-	cairo_matrix_init_identity(&matrix);
-	cairo_pattern_set_matrix(ctx->fill_pattern, &matrix);
-
-	/*
-	 * Stroke horizontal and vertical borders, shown by Xs and Ys
-	 * respectively in the figure below:
-	 *
-	 *          _,,ooO"XXXXXXXXX
-	 *        ,oO"'            |
-	 *      ,o"                |
-	 *     o"                  |
-	 *    o'                   |
-	 *    O                    |
-	 *    Y                    |
-	 *    Y                    |
-	 *    Y                    |
-	 *    Y                    |
-	 *    Y--------------------+
-	 */
-	cairo_set_line_cap(cairo, CAIRO_LINE_CAP_BUTT);
-	set_cairo_color(cairo, ctx->border_color);
-	cairo_set_line_width(cairo, ctx->line_width);
-	double half_line_width = ctx->line_width / 2.0;
-	switch (ctx->corner) {
-	case ROUNDED_CORNER_TOP_LEFT:
-		cairo_move_to(cairo, half_line_width, h);
-		cairo_line_to(cairo, half_line_width, r);
-		cairo_move_to(cairo, r, half_line_width);
-		cairo_line_to(cairo, w, half_line_width);
-		break;
-	case ROUNDED_CORNER_TOP_RIGHT:
-		cairo_move_to(cairo, 0, half_line_width);
-		cairo_line_to(cairo, w - r, half_line_width);
-		cairo_move_to(cairo, w - half_line_width, r);
-		cairo_line_to(cairo, w - half_line_width, h);
-		break;
-	}
-	cairo_stroke(cairo);
-
-	/*
-	 * If radius==0 the borders stroked above go right up to (and including)
-	 * the corners, so there is not need to do any more.
-	 */
-	if (!r) {
-		goto out;
-	}
-
-	/*
-	 * Stroke the arc section of the border of the corner piece.
-	 *
-	 * Note: This figure is drawn at a more zoomed in scale compared with
-	 * those above.
-	 *
-	 *                 ,,ooooO""  ^
-	 *            ,ooo""'      |  |
-	 *         ,oOO"           |  | line-thickness
-	 *       ,OO"              |  |
-	 *     ,OO"         _,,ooO""  v
-	 *    ,O"         ,oO"'
-	 *   ,O'        ,o"
-	 *  ,O'        o"
-	 *  o'        o'
-	 *  O         O
-	 *  O---------O            +
-	 *       <----------------->
-	 *          radius
-	 *
-	 * We handle the edge-case where line-thickness > radius by merely
-	 * setting line-thickness = radius and in effect drawing a quadrant of a
-	 * circle. In this case the X and Y borders butt up against the arc and
-	 * overlap each other (as their line-thicknesses are greater than the
-	 * line-thickness of the arc). As a result, there is no inner rounded
-	 * corners.
-	 *
-	 * So, in order to have inner rounded corners cornerRadius should be
-	 * greater than border.width.
-	 *
-	 * Also, see diagrams in https://github.com/labwc/labwc/pull/990
-	 */
-	double line_width = MIN(ctx->line_width, r);
-	cairo_set_line_width(cairo, line_width);
-	half_line_width = line_width / 2.0;
-	switch (ctx->corner) {
-	case ROUNDED_CORNER_TOP_LEFT:
-		cairo_move_to(cairo, half_line_width, r);
-		cairo_arc(cairo, r, r, r - half_line_width, 180 * deg, 270 * deg);
-		break;
-	case ROUNDED_CORNER_TOP_RIGHT:
-		cairo_move_to(cairo, w - r, half_line_width);
-		cairo_arc(cairo, w - r, r, r - half_line_width, -90 * deg, 0 * deg);
-		break;
-	}
-	cairo_stroke(cairo);
-
-out:
-	cairo_surface_flush(surf);
-	cairo_destroy(cairo);
-
-	return buffer;
-}
-
 static void
 add_color_stop_rgba_premult(cairo_pattern_t *pattern, float offset,
 		const float c[4])
@@ -1644,34 +1461,6 @@ create_backgrounds(struct theme *theme)
 		theme->window[active].titlebar_fill = create_titlebar_fill(
 			theme->window[active].titlebar_pattern,
 			theme->titlebar_height);
-	}
-}
-
-static void
-create_corners(struct theme *theme)
-{
-	int corner_width = ssd_get_corner_width();
-
-	struct wlr_box box = {
-		.x = 0,
-		.y = 0,
-		.width = corner_width + theme->border_width,
-		.height = theme->titlebar_height + theme->border_width,
-	};
-
-	enum ssd_active_state active;
-	FOR_EACH_ACTIVE_STATE(active) {
-		struct rounded_corner_ctx ctx = {
-			.box = &box,
-			.radius = rc.corner_radius,
-			.line_width = theme->border_width,
-			.fill_pattern = theme->window[active].titlebar_pattern,
-			.border_color = theme->window[active].border_color,
-			.corner = ROUNDED_CORNER_TOP_LEFT,
-		};
-		theme->window[active].corner_top_left_normal = rounded_rect(&ctx);
-		ctx.corner = ROUNDED_CORNER_TOP_RIGHT;
-		theme->window[active].corner_top_right_normal = rounded_rect(&ctx);
 	}
 }
 
@@ -2219,7 +2008,6 @@ theme_init(struct theme *theme, const char *theme_name)
 
 	post_processing(theme);
 	create_backgrounds(theme);
-	create_corners(theme);
 	load_buttons(theme);
 	create_shadows(theme);
 }
@@ -2248,8 +2036,6 @@ theme_finish(struct theme *theme)
 	FOR_EACH_ACTIVE_STATE(active) {
 		zfree_pattern(theme->window[active].titlebar_pattern);
 		zdrop(&theme->window[active].titlebar_fill);
-		zdrop(&theme->window[active].corner_top_left_normal);
-		zdrop(&theme->window[active].corner_top_right_normal);
 		zdrop(&theme->window[active].shadow_corner_top);
 		zdrop(&theme->window[active].shadow_corner_bottom);
 		zdrop(&theme->window[active].shadow_edge);

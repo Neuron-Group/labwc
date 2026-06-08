@@ -13,6 +13,7 @@ struct ssd_state_title_width {
 };
 
 struct ssd_compartment_relief {
+	struct wlr_scene_tree *tree;
 	struct wlr_scene_rect *top;
 	struct wlr_scene_rect *left;
 	struct wlr_scene_rect *bottom;
@@ -20,12 +21,30 @@ struct ssd_compartment_relief {
 };
 
 struct ssd_shoulder_relief {
+	struct wlr_scene_tree *tree;
 	struct wlr_scene_rect *top;
 	struct wlr_scene_rect *outer;
 	struct wlr_scene_rect *cap_return;
 	struct wlr_scene_rect *inner;
 	struct wlr_scene_rect *cap_underside;
 	struct wlr_scene_rect *bottom;
+};
+
+enum ssd_relief_mode {
+	SSD_RELIEF_MODE_RELIEF,
+	SSD_RELIEF_MODE_RECESS,
+};
+
+enum ssd_relief_face {
+	SSD_RELIEF_FACE_UP,
+	SSD_RELIEF_FACE_DOWN,
+	SSD_RELIEF_FACE_LEFT,
+	SSD_RELIEF_FACE_RIGHT,
+};
+
+enum ssd_shoulder_orientation {
+	SSD_SHOULDER_TOP,
+	SSD_SHOULDER_BOTTOM,
 };
 
 /*
@@ -117,6 +136,8 @@ struct ssd {
 		struct ssd_titlebar_subtree {
 			struct wlr_scene_tree *tree;
 			struct wlr_scene_buffer *bar;
+			struct wlr_scene_buffer *left_shoulder_shape;
+			struct wlr_scene_buffer *right_shoulder_shape;
 			struct wlr_scene_rect *top_border_fill;
 			struct wlr_scene_rect *left_shoulder_top_fill;
 			struct wlr_scene_rect *left_shoulder_stile_fill;
@@ -144,6 +165,26 @@ struct ssd {
 		struct ssd_border_subtree {
 			struct wlr_scene_tree *tree;
 			struct wlr_scene_rect *top, *bottom, *left, *right;
+			struct wlr_scene_buffer *top_left_shoulder_shape;
+			struct wlr_scene_buffer *top_right_shoulder_shape;
+			struct wlr_scene_buffer *bottom_left_shoulder_shape;
+			struct wlr_scene_buffer *bottom_right_shoulder_shape;
+			struct wlr_scene_rect *top_fill;
+			struct wlr_scene_rect *left_fill;
+			struct wlr_scene_rect *right_fill;
+			struct wlr_scene_rect *bottom_fill;
+			struct wlr_scene_rect *bottom_left_shoulder_stile_fill;
+			struct wlr_scene_rect *bottom_left_shoulder_bottom_fill;
+			struct wlr_scene_rect *bottom_right_shoulder_stile_fill;
+			struct wlr_scene_rect *bottom_right_shoulder_bottom_fill;
+			struct ssd_compartment_relief left_border;
+			struct ssd_compartment_relief right_border;
+			struct ssd_compartment_relief top_border;
+			struct ssd_compartment_relief bottom_border;
+			struct ssd_shoulder_relief top_left_shoulder;
+			struct ssd_shoulder_relief top_right_shoulder;
+			struct ssd_shoulder_relief bottom_left_shoulder;
+			struct ssd_shoulder_relief bottom_right_shoulder;
 			/* Multi-band border (P2): outer and inner bands */
 			struct wlr_scene_rect *outer_top, *outer_bottom, *outer_left, *outer_right;
 			struct wlr_scene_rect *inner_top, *inner_bottom, *inner_left, *inner_right;
@@ -211,6 +252,7 @@ struct ssd_button {
 };
 
 struct wlr_buffer;
+struct wlr_scene_buffer;
 struct wlr_scene_tree;
 
 /* SSD internal helpers to create various SSD elements */
@@ -219,6 +261,20 @@ struct ssd_button *attach_ssd_button(struct wl_list *button_parts,
 	struct lab_img *imgs[LAB_BS_ALL + 1], int x, int y,
 	struct view *view);
 void ssd_button_set_pressed(struct ssd_button *button, bool pressed);
+void ssd_compartment_relief_create(struct wlr_scene_tree *parent,
+	struct ssd_compartment_relief *relief, const float highlight[4],
+	const float shadow[4], enum ssd_relief_mode mode);
+void ssd_compartment_relief_update(struct ssd_compartment_relief *relief,
+	int width, int height, int bevel_w);
+void ssd_shoulder_relief_create(struct wlr_scene_tree *parent,
+	struct ssd_shoulder_relief *relief, const float highlight[4],
+	const float shadow[4], enum ssd_relief_mode mode,
+	enum ssd_relief_face top_face, enum ssd_relief_face outer_face,
+	enum ssd_relief_face cap_return_face, enum ssd_relief_face inner_face,
+	enum ssd_relief_face cap_underside_face, enum ssd_relief_face bottom_face);
+void ssd_shoulder_relief_update(struct ssd_shoulder_relief *relief,
+	int width, int height, int stile_w, int cap_h, int bevel_w, bool right_side,
+	enum ssd_shoulder_orientation orientation);
 
 /* SSD internal */
 void ssd_titlebar_create(struct ssd *ssd);
