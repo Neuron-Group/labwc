@@ -126,6 +126,7 @@ handle_sighup(int signal, void *data)
 {
 	keyboard_cancel_all_keybind_repeats(&server.seat);
 	session_environment_init();
+	session_activation_refresh();
 	reload_config_and_theme();
 	output_virtual_update_fallback();
 	return 0;

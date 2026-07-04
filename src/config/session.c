@@ -29,9 +29,12 @@
 static const char *const env_vars[] = {
 	"WAYLAND_DISPLAY",
 	"XDG_CURRENT_DESKTOP",
+	"XDG_SESSION_DESKTOP",
+	"DESKTOP_SESSION",
 	"XCURSOR_SIZE",
 	"XCURSOR_THEME",
 	"XDG_SESSION_TYPE",
+	"QT_QPA_PLATFORMTHEME",
 	"LABWC_PID",
 	"LABWC_VER",
 	NULL
@@ -301,6 +304,12 @@ session_environment_init(void)
 		}
 	}
 	paths_destroy(&paths);
+}
+
+void
+session_activation_refresh(void)
+{
+	update_activation_env(/* initialize */ true);
 }
 
 void

@@ -18,6 +18,12 @@ void session_run_script(const char *script);
 void session_environment_init(void);
 
 /**
+ * session_activation_refresh - refresh dbus/systemd activation environment
+ * from the compositor's current process environment
+ */
+void session_activation_refresh(void);
+
+/**
  * session_autostart_init - run autostart file as shell script
  * Note: Same as `sh ~/.config/labwc/autostart` (or equivalent XDG config dir)
  */
