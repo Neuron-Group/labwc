@@ -83,7 +83,12 @@ update_shoulder_shape(struct wlr_scene_buffer *scene_buffer,
 static bool
 use_custom_border_frame(struct ssd *ssd)
 {
-	return ssd->titlebar.height > 0 && !ssd->state.was_squared;
+	/*
+	 * Keep the NsCDE frame active for tiled/squared windows as well.
+	 * Squared state still changes top/side ownership, but should not
+	 * fall back to the older flat border bands.
+	 */
+	return ssd->titlebar.height > 0;
 }
 
 static bool
@@ -145,7 +150,6 @@ ssd_border_create(struct ssd *ssd)
 	int button_side_len = get_titlebar_button_side_len();
 	int custom_top_x = 0;
 	int custom_top_width = 0;
-	int top_y = -(ssd->titlebar.height + theme->border_width);
 	bool full_top_border = border_owns_top_edge(ssd);
 	bool full_side_border = border_owns_title_zone_sides(ssd);
 	int side_height = full_side_border ? height + ssd->titlebar.height : height;
@@ -164,55 +168,24 @@ ssd_border_create(struct ssd *ssd)
 		struct ssd_frame_band_geometry frame =
 			get_frame_band_geometry(theme, active);
 		wlr_scene_node_set_enabled(&parent->node, active);
-		float *color_left = theme->window[active].border_color_left;
-		float *color_right = theme->window[active].border_color_right;
-		float *color_top = theme->window[active].border_color_top;
-		float *color_bottom = theme->window[active].border_color_bottom;
 		float *fill = theme->window[active].title_bg.color;
 		float *hl = theme->window[active].titlebar_bevel_highlight_color;
 		float *sh = theme->window[active].titlebar_bevel_shadow_color;
 
-		subtree->left = lab_wlr_scene_rect_create(parent,
-			theme->border_width, side_height, color_left);
-		wlr_scene_node_set_position(&subtree->left->node, 0, side_y);
-
-		subtree->right = lab_wlr_scene_rect_create(parent,
-			theme->border_width, side_height, color_right);
-		wlr_scene_node_set_position(&subtree->right->node,
-			theme->border_width + width, side_y);
-
-		subtree->bottom = lab_wlr_scene_rect_create(parent,
-			full_width, theme->border_width, color_bottom);
-		wlr_scene_node_set_position(&subtree->bottom->node,
-			0, height);
-
-		subtree->top = lab_wlr_scene_rect_create(parent,
-			full_top_border ? full_width : custom_top_width,
-			theme->border_width, color_top);
-		wlr_scene_node_set_position(&subtree->top->node,
-			full_top_border ? 0 : custom_top_x,
-			top_y);
-
-		/* Keep legacy single-band border geometry inert; NsCDE owns visuals. */
-		wlr_scene_node_set_enabled(&subtree->left->node, false);
-		wlr_scene_node_set_enabled(&subtree->right->node, false);
-		wlr_scene_node_set_enabled(&subtree->bottom->node, false);
-		wlr_scene_node_set_enabled(&subtree->top->node, false);
-
-			subtree->top_left_shoulder_shape =
-				lab_wlr_scene_buffer_create(parent, NULL);
-			subtree->top_right_shoulder_shape =
-				lab_wlr_scene_buffer_create(parent, NULL);
-			subtree->top_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
-			subtree->left_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
-			subtree->right_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
-			subtree->bottom_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
-			subtree->bottom_left_shoulder_shape =
-				lab_wlr_scene_buffer_create(parent, NULL);
-			subtree->bottom_right_shoulder_shape =
-				lab_wlr_scene_buffer_create(parent, NULL);
-			subtree->bottom_left_shoulder_stile_fill =
-				lab_wlr_scene_rect_create(parent, 1, 1, fill);
+		subtree->top_left_shoulder_shape =
+			lab_wlr_scene_buffer_create(parent, NULL);
+		subtree->top_right_shoulder_shape =
+			lab_wlr_scene_buffer_create(parent, NULL);
+		subtree->top_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
+		subtree->left_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
+		subtree->right_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
+		subtree->bottom_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
+		subtree->bottom_left_shoulder_shape =
+			lab_wlr_scene_buffer_create(parent, NULL);
+		subtree->bottom_right_shoulder_shape =
+			lab_wlr_scene_buffer_create(parent, NULL);
+		subtree->bottom_left_shoulder_stile_fill =
+			lab_wlr_scene_rect_create(parent, 1, 1, fill);
 		subtree->bottom_left_shoulder_bottom_fill =
 			lab_wlr_scene_rect_create(parent, 1, 1, fill);
 		subtree->bottom_right_shoulder_stile_fill =
@@ -360,7 +333,6 @@ ssd_border_update(struct ssd *ssd)
 	int width = view->current.width;
 	int height = view_effective_height(view, /* use_pending */ false);
 	int full_width = width + 2 * theme->border_width;
-	int top_y = -(ssd->titlebar.height + theme->border_width);
 	int bottom_shoulder_w = get_titlebar_shoulder_width(ssd,
 		get_titlebar_button_side_len());
 	int custom_top_x = 0;
@@ -368,19 +340,19 @@ ssd_border_update(struct ssd *ssd)
 
 	/*
 	 * From here on we have to cover the following border scenarios:
-	 * Non-tiled (partial border, rounded corners):
+	 * Floating/titlebar frame (partial top border, rounded corners):
 	 *    _____________
 	 *   o           oox
 	 *  |---------------|
 	 *  |_______________|
 	 *
-	 * Tiled (full border, squared corners):
+	 * Tiled/titlebar frame (full top border, squared corners):
 	 *   _______________
 	 *  |o           oox|
 	 *  |---------------|
 	 *  |_______________|
 	 *
-	 * Tiled or non-tiled with zero title height (full boarder, no title):
+	 * Border-only frame (full border, no titlebar):
 	 *   _______________
 	 *  |_______________|
 	 */
@@ -421,31 +393,6 @@ ssd_border_update(struct ssd *ssd)
 		struct ssd_frame_band_geometry frame =
 			get_frame_band_geometry(theme, active);
 		bevel_w = theme->window[active].titlebar_bevel_width;
-
-		wlr_scene_rect_set_size(subtree->left,
-			theme->border_width, side_height);
-		wlr_scene_node_set_position(&subtree->left->node,
-			0, side_y);
-
-		wlr_scene_rect_set_size(subtree->right,
-			theme->border_width, side_height);
-		wlr_scene_node_set_position(&subtree->right->node,
-			theme->border_width + width, side_y);
-
-		wlr_scene_rect_set_size(subtree->bottom,
-			full_width, theme->border_width);
-		wlr_scene_node_set_position(&subtree->bottom->node,
-			0, height);
-
-		wlr_scene_rect_set_size(subtree->top,
-			top_width, theme->border_width);
-		wlr_scene_node_set_position(&subtree->top->node,
-			top_x, top_y);
-
-		wlr_scene_node_set_enabled(&subtree->left->node, false);
-		wlr_scene_node_set_enabled(&subtree->right->node, false);
-		wlr_scene_node_set_enabled(&subtree->bottom->node, false);
-		wlr_scene_node_set_enabled(&subtree->top->node, false);
 		wlr_scene_node_set_enabled(&subtree->top_left_shoulder_shape->node,
 			custom_frame && theme->border_width > 0);
 		wlr_scene_node_set_enabled(&subtree->top_right_shoulder_shape->node,

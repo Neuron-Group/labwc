@@ -164,7 +164,6 @@ struct ssd {
 		struct wlr_scene_tree *tree;
 		struct ssd_border_subtree {
 			struct wlr_scene_tree *tree;
-			struct wlr_scene_rect *top, *bottom, *left, *right;
 			struct wlr_scene_buffer *top_left_shoulder_shape;
 			struct wlr_scene_buffer *top_right_shoulder_shape;
 			struct wlr_scene_buffer *bottom_left_shoulder_shape;

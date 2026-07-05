@@ -559,10 +559,21 @@ ssd_enable_keybind_inhibit_indicator(struct ssd *ssd, bool enable)
 		return;
 	}
 
+	struct ssd_border_subtree *subtree = &ssd->border.subtrees[SSD_ACTIVE];
 	float *color = enable
 		? rc.theme->window_toggled_keybinds_color
 		: rc.theme->window[SSD_ACTIVE].border_color;
-	wlr_scene_rect_set_color(ssd->border.subtrees[SSD_ACTIVE].top, color);
+
+	/*
+	 * The NsCDE titlebar frame no longer keeps a flat fallback top rect.
+	 * Only the border-only path still uses simple top band scene-rects.
+	 */
+	if (subtree->outer_top) {
+		wlr_scene_rect_set_color(subtree->outer_top, color);
+	}
+	if (subtree->inner_top) {
+		wlr_scene_rect_set_color(subtree->inner_top, color);
+	}
 }
 
 bool
