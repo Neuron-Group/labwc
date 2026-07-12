@@ -103,6 +103,8 @@ struct mappable {
 struct view_size_hints {
 	int min_width;
 	int min_height;
+	int max_width;
+	int max_height;
 	int width_inc;
 	int height_inc;
 	int base_width;
@@ -567,6 +569,7 @@ void view_toggle_visible_on_all_workspaces(struct view *view);
 bool view_is_tiled(struct view *view);
 bool view_is_tiled_and_notify_tiled(struct view *view);
 bool view_is_floating(struct view *view);
+bool view_is_resizable(struct view *view);
 void view_move_to_workspace(struct view *view, struct workspace *workspace);
 bool view_titlebar_visible(struct view *view);
 void view_set_ssd_mode(struct view *view, enum lab_ssd_mode mode);

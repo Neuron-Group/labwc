@@ -114,6 +114,7 @@ struct ssd {
 		 * such a small titlebar.
 		 */
 		bool was_squared;
+		bool was_resizable;
 
 		struct wlr_box geometry;
 		struct ssd_state_title {
@@ -164,6 +165,7 @@ struct ssd {
 		struct wlr_scene_tree *tree;
 		struct ssd_border_subtree {
 			struct wlr_scene_tree *tree;
+			struct wlr_scene_buffer *fixed_frame;
 			struct wlr_scene_buffer *top_left_shoulder_shape;
 			struct wlr_scene_buffer *top_right_shoulder_shape;
 			struct wlr_scene_buffer *bottom_left_shoulder_shape;

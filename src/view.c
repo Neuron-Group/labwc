@@ -596,7 +596,8 @@ void
 view_resize_relative(struct view *view, int left, int right, int top, int bottom)
 {
 	assert(view);
-	if (view->fullscreen || view->maximized != VIEW_AXIS_NONE) {
+	if (view->fullscreen || view->maximized != VIEW_AXIS_NONE
+			|| !view_is_resizable(view)) {
 		return;
 	}
 	view_set_shade(view, false);
@@ -724,6 +725,29 @@ view_adjust_size(struct view *view, int *w, int *h)
 	}
 	*w = MAX(*w, hints.min_width);
 	*h = MAX(*h, hints.min_height);
+	if (hints.max_width > 0) {
+		hints.max_width = MAX(hints.max_width, hints.min_width);
+		*w = MIN(*w, hints.max_width);
+	}
+	if (hints.max_height > 0) {
+		hints.max_height = MAX(hints.max_height, hints.min_height);
+		*h = MIN(*h, hints.max_height);
+	}
+}
+
+bool
+view_is_resizable(struct view *view)
+{
+	assert(view);
+	struct view_size_hints hints = view_get_size_hints(view);
+	bool width_fixed = hints.max_width > 0
+		&& hints.min_width > 0
+		&& hints.min_width == hints.max_width;
+	bool height_fixed = hints.max_height > 0
+		&& hints.min_height > 0
+		&& hints.min_height == hints.max_height;
+
+	return !(width_fixed && height_fixed);
 }
 
 static void

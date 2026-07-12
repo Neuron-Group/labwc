@@ -123,12 +123,12 @@ interactive_begin(struct view *view, enum input_mode mode, enum lab_edge edges)
 		cursor_shape = LAB_CURSOR_GRAB;
 		break;
 	case LAB_INPUT_STATE_RESIZE: {
-		if (view->shaded || view->fullscreen) {
+		if (!view_is_resizable(view) || view->shaded || view->fullscreen) {
 			/*
-			 * We don't allow resizing while shaded or fullscreen.
-			 * Maximized views are handled below by un-maximizing
-			 * the axes being resized while keeping the current
-			 * geometry as the starting point.
+			 * We don't allow resizing fixed-size, shaded or fullscreen
+			 * windows. Maximized views are handled below by un-maximizing
+			 * the axes being resized while keeping the current geometry
+			 * as the starting point.
 			 */
 			return;
 		}

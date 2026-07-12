@@ -55,9 +55,16 @@ get_titlebar_inner_height(const struct theme *theme)
 }
 
 static void
-get_titlebar_content_inset(bool squared, int *inset)
+get_titlebar_content_inset(struct ssd *ssd, bool squared, int *inset)
 {
-	int value = squared ? 0 : rc.theme->window_titlebar_padding_width;
+	/*
+	 * Fixed-size windows use the continuous full-band border style rather
+	 * than the floating shoulder frame, so keep the titlebar flush with the
+	 * frame even when the view is not tiled/maximized.
+	 */
+	int value = (squared || !view_is_resizable(ssd->view))
+		? 0
+		: rc.theme->window_titlebar_padding_width;
 	if (inset) {
 		*inset = value;
 	}
@@ -102,7 +109,7 @@ get_titlebar_bar_geometry(struct ssd *ssd, bool squared, int *x, int *width)
 {
 	int view_width = ssd->view->current.width;
 	int inset = 0;
-	get_titlebar_content_inset(squared, &inset);
+	get_titlebar_content_inset(ssd, squared, &inset);
 	int bar_x = inset;
 
 	if (x) {
@@ -488,8 +495,8 @@ update_visible_buttons(struct ssd *ssd)
 	struct view *view = ssd->view;
 	struct theme *theme = rc.theme;
 	int inset;
-	get_titlebar_content_inset(ssd->state.was_maximized || ssd->state.was_squared,
-		&inset);
+	get_titlebar_content_inset(ssd,
+		ssd->state.was_maximized || ssd->state.was_squared, &inset);
 	int width = MAX(view->current.width - 2 * inset, 0);
 	int button_width;
 	get_titlebar_button_cell_size(theme, &button_width, NULL);

@@ -300,7 +300,8 @@ enum lab_node_type
 ssd_get_resizing_type(const struct ssd *ssd, struct wlr_cursor *cursor)
 {
 	struct view *view = ssd ? ssd->view : NULL;
-	if (!view || !cursor || !view->ssd_mode || view->fullscreen) {
+	if (!view || !cursor || !view->ssd_mode || view->fullscreen
+			|| !view_is_resizable(view)) {
 		return LAB_NODE_NONE;
 	}
 
@@ -384,6 +385,7 @@ ssd_create(struct view *view, bool active)
 	ssd_set_active(ssd, active);
 	ssd_enable_keybind_inhibit_indicator(ssd, view->inhibits_keybinds);
 	ssd->state.geometry = view->current;
+	ssd->state.was_resizable = view_is_resizable(view);
 
 	return ssd;
 }
@@ -425,10 +427,12 @@ ssd_update_geometry(struct ssd *ssd)
 
 	int eff_width = current.width;
 	int eff_height = view_effective_height(view, /* use_pending */ false);
+	bool resizable = view_is_resizable(view);
 
 	bool update_area = eff_width != cached.width || eff_height != cached.height;
 	bool update_extents = update_area
-		|| current.x != cached.x || current.y != cached.y;
+		|| current.x != cached.x || current.y != cached.y
+		|| ssd->state.was_resizable != resizable;
 
 	bool maximized = view->maximized == VIEW_AXIS_BOTH;
 	bool squared = ssd_should_be_squared(ssd);
@@ -436,6 +440,7 @@ ssd_update_geometry(struct ssd *ssd)
 	bool state_changed = ssd->state.was_maximized != maximized
 		|| ssd->state.was_shaded != view->shaded
 		|| ssd->state.was_squared != squared
+		|| ssd->state.was_resizable != resizable
 		|| ssd->state.was_omnipresent != view->visible_on_all_workspaces;
 
 	/*
@@ -457,6 +462,7 @@ ssd_update_geometry(struct ssd *ssd)
 	if (update_extents) {
 		ssd->state.geometry = current;
 	}
+	ssd->state.was_resizable = resizable;
 }
 
 void

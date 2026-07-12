@@ -20,7 +20,8 @@ ssd_extents_create(struct ssd *ssd)
 
 	ssd->extents.tree = lab_wlr_scene_tree_create(ssd->tree);
 	struct wlr_scene_tree *parent = ssd->extents.tree;
-	if (view->fullscreen || view->maximized == VIEW_AXIS_BOTH) {
+	if (view->fullscreen || view->maximized == VIEW_AXIS_BOTH
+			|| !view_is_resizable(view)) {
 		wlr_scene_node_set_enabled(&parent->node, false);
 	}
 	wlr_scene_node_set_position(&parent->node,
@@ -88,7 +89,8 @@ void
 ssd_extents_update(struct ssd *ssd)
 {
 	struct view *view = ssd->view;
-	if (view->fullscreen || view->maximized == VIEW_AXIS_BOTH) {
+	if (view->fullscreen || view->maximized == VIEW_AXIS_BOTH
+			|| !view_is_resizable(view)) {
 		wlr_scene_node_set_enabled(&ssd->extents.tree->node, false);
 		return;
 	}

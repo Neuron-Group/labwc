@@ -97,6 +97,8 @@ xwayland_view_get_size_hints(struct view *view)
 	return (struct view_size_hints){
 		.min_width = hints->min_width,
 		.min_height = hints->min_height,
+		.max_width = hints->max_width,
+		.max_height = hints->max_height,
 		.width_inc = hints->width_inc,
 		.height_inc = hints->height_inc,
 		.base_width = hints->base_width,

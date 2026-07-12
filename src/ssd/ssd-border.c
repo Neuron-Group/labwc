@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <assert.h>
+#include <cairo.h>
 #include <wlr/types/wlr_scene.h>
 #include "buffer.h"
 #include "common/macros.h"
@@ -83,24 +84,23 @@ update_shoulder_shape(struct wlr_scene_buffer *scene_buffer,
 static bool
 use_custom_border_frame(struct ssd *ssd)
 {
-	/*
-	 * Keep the NsCDE frame active for tiled/squared windows as well.
-	 * Squared state still changes top/side ownership, but should not
-	 * fall back to the older flat border bands.
-	 */
-	return ssd->titlebar.height > 0;
+	return view_is_resizable(ssd->view) && ssd->titlebar.height > 0;
 }
 
 static bool
 border_owns_top_edge(struct ssd *ssd)
 {
-	return ssd->titlebar.height <= 0 || ssd->state.was_squared;
+	return !view_is_resizable(ssd->view)
+		|| ssd->titlebar.height <= 0
+		|| ssd->state.was_squared;
 }
 
 static bool
 border_owns_title_zone_sides(struct ssd *ssd)
 {
-	return ssd->titlebar.height <= 0 || ssd->state.was_squared;
+	return !view_is_resizable(ssd->view)
+		|| ssd->titlebar.height <= 0
+		|| ssd->state.was_squared;
 }
 
 static struct ssd_frame_band_geometry
@@ -134,6 +134,128 @@ get_inner_top_y(struct ssd *ssd, bool full_top_border, int outer_width)
 		return -(ssd->titlebar.height + rc.theme->border_width) + outer_width;
 	}
 	return -ssd->titlebar.height;
+}
+
+static void
+set_cairo_color(cairo_t *cairo, const float color[4])
+{
+	cairo_set_source_rgba(cairo,
+		color[0], color[1], color[2], color[3]);
+}
+
+static void
+fill_frame_rect(cairo_t *cairo, const float color[4],
+		int x, int y, int width, int height)
+{
+	if (width <= 0 || height <= 0) {
+		return;
+	}
+
+	set_cairo_color(cairo, color);
+	cairo_rectangle(cairo, x, y, width, height);
+	cairo_fill(cairo);
+}
+
+static struct lab_data_buffer *
+render_fixed_border_frame(struct ssd *ssd, enum ssd_active_state active,
+		const struct ssd_frame_band_geometry *frame)
+{
+	struct theme *theme = rc.theme;
+	int border_width = theme->border_width;
+	int width = ssd->view->current.width;
+	int height = view_effective_height(ssd->view, /* use_pending */ false);
+	int full_width = width + 2 * border_width;
+	int total_height = ssd->titlebar.height + height + 2 * border_width;
+	int outer_width = frame->outer_width;
+	int inner_width = frame->inner_width;
+	struct lab_data_buffer *buffer;
+	cairo_t *cairo;
+
+	if (border_width <= 0 || full_width <= 0 || total_height <= 0) {
+		return NULL;
+	}
+
+	buffer = buffer_create_cairo(full_width, total_height, 1.0f);
+	if (!buffer) {
+		return NULL;
+	}
+
+	cairo = cairo_create(buffer->surface);
+	cairo_set_antialias(cairo, CAIRO_ANTIALIAS_NONE);
+	cairo_set_operator(cairo, CAIRO_OPERATOR_SOURCE);
+	cairo_set_source_rgba(cairo, 0, 0, 0, 0);
+	cairo_paint(cairo);
+	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
+
+	/* Base strip keeps generic themes usable even if frame bands are absent. */
+	fill_frame_rect(cairo, theme->window[active].border_color_top,
+		0, 0, full_width, border_width);
+	fill_frame_rect(cairo, theme->window[active].border_color_left,
+		0, border_width, border_width,
+		MAX(total_height - 2 * border_width, 0));
+	fill_frame_rect(cairo, theme->window[active].border_color_bottom,
+		0, total_height - border_width, full_width, border_width);
+	fill_frame_rect(cairo, theme->window[active].border_color_right,
+		full_width - border_width, border_width, border_width,
+		MAX(total_height - 2 * border_width, 0));
+
+	if (outer_width > 0) {
+		fill_frame_rect(cairo, theme->window[active].frame_outer_color_top,
+			0, 0, full_width, outer_width);
+		fill_frame_rect(cairo, theme->window[active].frame_outer_color_left,
+			0, outer_width, outer_width,
+			MAX(total_height - 2 * outer_width, 0));
+		fill_frame_rect(cairo, theme->window[active].frame_outer_color_bottom,
+			0, total_height - outer_width, full_width, outer_width);
+		fill_frame_rect(cairo, theme->window[active].frame_outer_color_right,
+			full_width - outer_width, outer_width, outer_width,
+			MAX(total_height - 2 * outer_width, 0));
+	}
+
+	if (inner_width > 0) {
+		fill_frame_rect(cairo, theme->window[active].frame_inner_color_top,
+			outer_width, outer_width,
+			MAX(full_width - 2 * outer_width, 0), inner_width);
+		fill_frame_rect(cairo, theme->window[active].frame_inner_color_left,
+			outer_width, outer_width + inner_width,
+			inner_width, MAX(total_height - 2 * (outer_width + inner_width), 0));
+		fill_frame_rect(cairo, theme->window[active].frame_inner_color_bottom,
+			outer_width, total_height - outer_width - inner_width,
+			MAX(full_width - 2 * outer_width, 0), inner_width);
+		fill_frame_rect(cairo, theme->window[active].frame_inner_color_right,
+			full_width - outer_width - inner_width, outer_width + inner_width,
+			inner_width, MAX(total_height - 2 * (outer_width + inner_width), 0));
+	}
+
+	cairo_surface_flush(buffer->surface);
+	cairo_destroy(cairo);
+
+	return buffer;
+}
+
+static void
+update_fixed_border_frame(struct ssd *ssd, struct wlr_scene_buffer *scene_buffer,
+		enum ssd_active_state active,
+		const struct ssd_frame_band_geometry *frame)
+{
+	struct lab_data_buffer *buffer;
+
+	if (!scene_buffer) {
+		return;
+	}
+
+	buffer = render_fixed_border_frame(ssd, active, frame);
+	if (!buffer) {
+		wlr_scene_buffer_set_buffer(scene_buffer, NULL);
+		return;
+	}
+
+	wlr_scene_node_set_position(&scene_buffer->node,
+		0, -(ssd->titlebar.height + rc.theme->border_width));
+	wlr_scene_buffer_set_buffer(scene_buffer, &buffer->base);
+	wlr_scene_buffer_set_dest_size(scene_buffer,
+		buffer->logical_width, buffer->logical_height);
+	wlr_buffer_drop(&buffer->base);
 }
 
 void
@@ -176,6 +298,7 @@ ssd_border_create(struct ssd *ssd)
 			lab_wlr_scene_buffer_create(parent, NULL);
 		subtree->top_right_shoulder_shape =
 			lab_wlr_scene_buffer_create(parent, NULL);
+		subtree->fixed_frame = lab_wlr_scene_buffer_create(parent, NULL);
 		subtree->top_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
 		subtree->left_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
 		subtree->right_fill = lab_wlr_scene_rect_create(parent, 1, 1, fill);
@@ -291,6 +414,8 @@ ssd_border_create(struct ssd *ssd)
 					full_top_border);
 			}
 		}
+
+		wlr_scene_node_set_enabled(&subtree->fixed_frame->node, false);
 	}
 
 	if (view->maximized == VIEW_AXIS_BOTH) {
@@ -393,10 +518,14 @@ ssd_border_update(struct ssd *ssd)
 		struct ssd_frame_band_geometry frame =
 			get_frame_band_geometry(theme, active);
 		bevel_w = theme->window[active].titlebar_bevel_width;
+		bool fixed_frame = !custom_frame && !view_is_resizable(view);
+
 		wlr_scene_node_set_enabled(&subtree->top_left_shoulder_shape->node,
 			custom_frame && theme->border_width > 0);
 		wlr_scene_node_set_enabled(&subtree->top_right_shoulder_shape->node,
 			custom_frame && theme->border_width > 0);
+		wlr_scene_node_set_enabled(&subtree->fixed_frame->node,
+			fixed_frame && theme->border_width > 0);
 
 		wlr_scene_node_set_enabled(&subtree->top_fill->node, custom_frame);
 		wlr_scene_node_set_enabled(&subtree->left_fill->node, custom_frame);
@@ -557,6 +686,11 @@ ssd_border_update(struct ssd *ssd)
 			wlr_scene_buffer_set_buffer(subtree->bottom_left_shoulder_shape, NULL);
 			wlr_scene_buffer_set_buffer(subtree->bottom_right_shoulder_shape, NULL);
 		}
+		if (fixed_frame) {
+			update_fixed_border_frame(ssd, subtree->fixed_frame, active, &frame);
+		} else {
+			wlr_scene_buffer_set_buffer(subtree->fixed_frame, NULL);
+		}
 
 		/* Multi-band border (P2): update outer and inner bands */
 		int outer_width = frame.outer_width;
@@ -585,10 +719,13 @@ ssd_border_update(struct ssd *ssd)
 				top_x,
 				get_outer_top_y(ssd, full_top_border, outer_width));
 			wlr_scene_node_set_enabled(&subtree->outer_top->node,
-				full_top_border && !custom_frame);
-			wlr_scene_node_set_enabled(&subtree->outer_left->node, !custom_frame);
-			wlr_scene_node_set_enabled(&subtree->outer_right->node, !custom_frame);
-			wlr_scene_node_set_enabled(&subtree->outer_bottom->node, !custom_frame);
+				full_top_border && !custom_frame && !fixed_frame);
+			wlr_scene_node_set_enabled(&subtree->outer_left->node,
+				!custom_frame && !fixed_frame);
+			wlr_scene_node_set_enabled(&subtree->outer_right->node,
+				!custom_frame && !fixed_frame);
+			wlr_scene_node_set_enabled(&subtree->outer_bottom->node,
+				!custom_frame && !fixed_frame);
 
 			/* Inner band */
 			if (inner_width > 0 && subtree->inner_left) {
@@ -613,10 +750,13 @@ ssd_border_update(struct ssd *ssd)
 					top_x + outer_width,
 					get_inner_top_y(ssd, full_top_border, outer_width));
 				wlr_scene_node_set_enabled(&subtree->inner_top->node,
-					full_top_border && !custom_frame);
-				wlr_scene_node_set_enabled(&subtree->inner_left->node, !custom_frame);
-				wlr_scene_node_set_enabled(&subtree->inner_right->node, !custom_frame);
-				wlr_scene_node_set_enabled(&subtree->inner_bottom->node, !custom_frame);
+					full_top_border && !custom_frame && !fixed_frame);
+				wlr_scene_node_set_enabled(&subtree->inner_left->node,
+					!custom_frame && !fixed_frame);
+				wlr_scene_node_set_enabled(&subtree->inner_right->node,
+					!custom_frame && !fixed_frame);
+				wlr_scene_node_set_enabled(&subtree->inner_bottom->node,
+					!custom_frame && !fixed_frame);
 			}
 
 			wlr_scene_node_raise_to_top(
