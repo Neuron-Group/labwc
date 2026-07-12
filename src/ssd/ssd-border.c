@@ -157,8 +157,7 @@ fill_frame_rect(cairo_t *cairo, const float color[4],
 }
 
 static struct lab_data_buffer *
-render_fixed_border_frame(struct ssd *ssd, enum ssd_active_state active,
-		const struct ssd_frame_band_geometry *frame)
+render_fixed_border_frame(struct ssd *ssd, enum ssd_active_state active)
 {
 	struct theme *theme = rc.theme;
 	int border_width = theme->border_width;
@@ -166,8 +165,11 @@ render_fixed_border_frame(struct ssd *ssd, enum ssd_active_state active,
 	int height = view_effective_height(ssd->view, /* use_pending */ false);
 	int full_width = width + 2 * border_width;
 	int total_height = ssd->titlebar.height + height + 2 * border_width;
-	int outer_width = frame->outer_width;
-	int inner_width = frame->inner_width;
+	int inner_height = total_height - 2 * border_width;
+	int bevel_w = theme->window[active].titlebar_bevel_width;
+	const float *fill = theme->window[active].title_bg.color;
+	const float *highlight = theme->window[active].titlebar_bevel_highlight_color;
+	const float *shadow = theme->window[active].titlebar_bevel_shadow_color;
 	struct lab_data_buffer *buffer;
 	cairo_t *cairo;
 
@@ -187,45 +189,40 @@ render_fixed_border_frame(struct ssd *ssd, enum ssd_active_state active,
 	cairo_paint(cairo);
 	cairo_set_operator(cairo, CAIRO_OPERATOR_OVER);
 
-	/* Base strip keeps generic themes usable even if frame bands are absent. */
-	fill_frame_rect(cairo, theme->window[active].border_color_top,
-		0, 0, full_width, border_width);
-	fill_frame_rect(cairo, theme->window[active].border_color_left,
-		0, border_width, border_width,
-		MAX(total_height - 2 * border_width, 0));
-	fill_frame_rect(cairo, theme->window[active].border_color_bottom,
-		0, total_height - border_width, full_width, border_width);
-	fill_frame_rect(cairo, theme->window[active].border_color_right,
-		full_width - border_width, border_width, border_width,
-		MAX(total_height - 2 * border_width, 0));
+	bevel_w = MAX(bevel_w, 1);
+	bevel_w = MIN(bevel_w, border_width);
 
-	if (outer_width > 0) {
-		fill_frame_rect(cairo, theme->window[active].frame_outer_color_top,
-			0, 0, full_width, outer_width);
-		fill_frame_rect(cairo, theme->window[active].frame_outer_color_left,
-			0, outer_width, outer_width,
-			MAX(total_height - 2 * outer_width, 0));
-		fill_frame_rect(cairo, theme->window[active].frame_outer_color_bottom,
-			0, total_height - outer_width, full_width, outer_width);
-		fill_frame_rect(cairo, theme->window[active].frame_outer_color_right,
-			full_width - outer_width, outer_width, outer_width,
-			MAX(total_height - 2 * outer_width, 0));
-	}
+	set_cairo_color(cairo, fill);
+	cairo_set_fill_rule(cairo, CAIRO_FILL_RULE_EVEN_ODD);
+	cairo_rectangle(cairo, 0, 0, full_width, total_height);
+	cairo_rectangle(cairo, border_width, border_width,
+		MAX(full_width - 2 * border_width, 0), MAX(inner_height, 0));
+	cairo_fill(cairo);
+	cairo_set_fill_rule(cairo, CAIRO_FILL_RULE_WINDING);
 
-	if (inner_width > 0) {
-		fill_frame_rect(cairo, theme->window[active].frame_inner_color_top,
-			outer_width, outer_width,
-			MAX(full_width - 2 * outer_width, 0), inner_width);
-		fill_frame_rect(cairo, theme->window[active].frame_inner_color_left,
-			outer_width, outer_width + inner_width,
-			inner_width, MAX(total_height - 2 * (outer_width + inner_width), 0));
-		fill_frame_rect(cairo, theme->window[active].frame_inner_color_bottom,
-			outer_width, total_height - outer_width - inner_width,
-			MAX(full_width - 2 * outer_width, 0), inner_width);
-		fill_frame_rect(cairo, theme->window[active].frame_inner_color_right,
-			full_width - outer_width - inner_width, outer_width + inner_width,
-			inner_width, MAX(total_height - 2 * (outer_width + inner_width), 0));
-	}
+	/* Outer relief: top/left are lit, bottom/right are shadowed. */
+	fill_frame_rect(cairo, highlight,
+		0, 0, MAX(full_width - bevel_w, 0), bevel_w);
+	fill_frame_rect(cairo, highlight,
+		0, bevel_w, bevel_w, MAX(total_height - 2 * bevel_w, 0));
+	fill_frame_rect(cairo, shadow,
+		full_width - bevel_w, 0, bevel_w, total_height);
+	fill_frame_rect(cairo, shadow,
+		0, total_height - bevel_w, MAX(full_width - bevel_w, 0), bevel_w);
+
+	/* Inner relief: the edge facing the client is the opposite face. */
+	fill_frame_rect(cairo, shadow,
+		border_width, border_width - bevel_w,
+		MAX(width, 0), bevel_w);
+	fill_frame_rect(cairo, shadow,
+		border_width - bevel_w, border_width,
+		bevel_w, MAX(inner_height - bevel_w, 0));
+	fill_frame_rect(cairo, highlight,
+		full_width - border_width, border_width - bevel_w,
+		bevel_w, MAX(inner_height + bevel_w, 0));
+	fill_frame_rect(cairo, highlight,
+		border_width - bevel_w, total_height - border_width,
+		MAX(width + bevel_w, 0), bevel_w);
 
 	cairo_surface_flush(buffer->surface);
 	cairo_destroy(cairo);
@@ -235,8 +232,7 @@ render_fixed_border_frame(struct ssd *ssd, enum ssd_active_state active,
 
 static void
 update_fixed_border_frame(struct ssd *ssd, struct wlr_scene_buffer *scene_buffer,
-		enum ssd_active_state active,
-		const struct ssd_frame_band_geometry *frame)
+		enum ssd_active_state active)
 {
 	struct lab_data_buffer *buffer;
 
@@ -244,7 +240,7 @@ update_fixed_border_frame(struct ssd *ssd, struct wlr_scene_buffer *scene_buffer
 		return;
 	}
 
-	buffer = render_fixed_border_frame(ssd, active, frame);
+	buffer = render_fixed_border_frame(ssd, active);
 	if (!buffer) {
 		wlr_scene_buffer_set_buffer(scene_buffer, NULL);
 		return;
@@ -687,7 +683,7 @@ ssd_border_update(struct ssd *ssd)
 			wlr_scene_buffer_set_buffer(subtree->bottom_right_shoulder_shape, NULL);
 		}
 		if (fixed_frame) {
-			update_fixed_border_frame(ssd, subtree->fixed_frame, active, &frame);
+			update_fixed_border_frame(ssd, subtree->fixed_frame, active);
 		} else {
 			wlr_scene_buffer_set_buffer(subtree->fixed_frame, NULL);
 		}
